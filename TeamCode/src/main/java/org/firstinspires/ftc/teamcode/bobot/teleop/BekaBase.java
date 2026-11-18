@@ -30,7 +30,7 @@ public class BekaBase extends OpMode {
     public final void init() {
         first_driver = new GamepadEx(gamepad1);
         second_driver = new GamepadEx(gamepad2);
-        r = new Robot();
+        r = Robot.getInstance();
         r.init(hardwareMap);
         robotInitialized = true;
         onInit();
