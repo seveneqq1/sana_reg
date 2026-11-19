@@ -24,6 +24,7 @@ public class Turret extends SubsystemBase {
     public void init(HardwareMap hw) {
         servo1 = new ServoEx(hw, "servo1");
         servo2 = new ServoEx(hw, "servo2");
+        servo2.setInverted(true);
         targetAngleDegrees = centerAngleDegrees;
     }
 

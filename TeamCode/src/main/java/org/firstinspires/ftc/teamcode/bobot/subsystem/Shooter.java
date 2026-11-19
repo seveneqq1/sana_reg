@@ -10,15 +10,18 @@ import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 @Config
 public class Shooter extends SubsystemBase {
+    private static final double STANDBY_SPEED_FRACTION = 0.30;
+
     public Shooter(){}
-    private MotorEx l, r;
+    public MotorEx l, r;
     private Servo stopper;
     private final PIDController pid = new PIDController(kP, kI, kD);
     private double previousTarget;
+    private boolean standby;
     public static double blockedPosition = 0.35, feedingPosition = 0.5;
-    public static double kP = 0.0005, kI = 0.0, kD = 0.0;
-    public static double kS = 0.025, kV = 0.00038;
-    public static double baseVel = 2480;
+    public static double kP = 0.0035, kI = 0.01, kD = 0.0;
+    public static double kS = 0.0433, kV = 0.0003265;
+    public static double baseVel = 2200;
     public static boolean volComp = false;
     public static boolean on = true;
     public void init(HardwareMap hw){
@@ -35,6 +38,12 @@ public class Shooter extends SubsystemBase {
     public double getTarget(){
         return baseVel;
     }
+    public void setStandby(boolean standby) {
+        this.standby = standby;
+    }
+    public double getCommandedTarget() {
+        return standby ? getTarget() * STANDBY_SPEED_FRACTION : getTarget();
+    }
     public double getVel(){
         return r.getVelocity();
     }
@@ -45,6 +54,7 @@ public class Shooter extends SubsystemBase {
         pid.reset();
         set(0);
         setFeeding(false);
+        standby = false;
         on = false;
     }
 
@@ -61,7 +71,7 @@ public class Shooter extends SubsystemBase {
     @Override
     public void periodic() {
         if (on) {
-            double target = getTarget();
+            double target = getCommandedTarget();
             double velocity = Math.abs(getVel());
             if (!Double.isFinite(target) || target <= 0 || !Double.isFinite(velocity)) {
                 pid.reset();

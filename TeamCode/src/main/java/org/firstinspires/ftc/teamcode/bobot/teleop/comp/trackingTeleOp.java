@@ -1,8 +1,11 @@
 package org.firstinspires.ftc.teamcode.bobot.teleop.comp;
 
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 
@@ -12,7 +15,8 @@ import org.firstinspires.ftc.teamcode.bobot.teleop.BekaBase;
 @Config
 @TeleOp(name = "Beka teleop")
 public class trackingTeleOp extends BekaBase {
-    public static double targetX = 110, targetY = 63;
+    public static double targetX = 50, targetY = 50;
+    VoltageSensor voltageSensor;
     public static double slowMultiplier = 0.6;
     public static double manualTurretDegreesPerSecond = 120;
     public static double shooterTolerance = 120;
@@ -32,29 +36,41 @@ public class trackingTeleOp extends BekaBase {
 
     @Override
     protected void onStart() {
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         r.turnOn();
         initializeTracking();
+        voltageSensor = hardwareMap.get(VoltageSensor.class, "Control Hub");
     }
-
     @Override
     protected void onUpdate() {
         if (pressed(GamepadKeys.Button.DPAD_UP)) resetTracking();
         Pose pose = r.drive.getPose();
+        if(pose.x() >= 70.5){
+            targetX = 85;
+        } else {
+            targetX = 53;
+        }
+        if(pose.y() >= 70.5){
+            targetY = 81;
+        } else {
+            targetY = 58;
+        }
+        target = new Pose(targetX, targetY, 0);
         double headingRate = deltaTime > 0
                 ? Turret.normalizeAngle(pose.heading() - previousHeading) / deltaTime : 0;
         previousHeading = pose.heading();
         updateTurret(pose, headingRate);
 
         double velocity = Math.abs(r.shooter.getVel());
-        double shooterTarget = r.shooter.getTarget();
-        updateIntake(velocity, shooterTarget);
+        updateIntake(velocity);
         updateDrive();
 
         telemetry.addData("Pose", pose);
         telemetry.addData("Goal", target);
-        telemetry.addData("Tracking", tracking);
-        telemetry.addData("Mode", mode);
-        telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, shooterTarget);
+        telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getCommandedTarget());
+        telemetry.addData("Voltage", voltageSensor.getVoltage());
+        telemetry.addData("dt", deltaTime);
+        telemetry.addData("freq", 1 / deltaTime);
         telemetry.update();
     }
 
@@ -112,7 +128,7 @@ public class trackingTeleOp extends BekaBase {
         }
     }
 
-    private void updateIntake(double velocity, double shooterTarget) {
+    private void updateIntake(double velocity) {
         if (pressed(GamepadKeys.Button.X)) setMode(Mode.INTAKE);
         if (pressed(GamepadKeys.Button.B)) setMode(Mode.OUTTAKE);
         if (pressed(GamepadKeys.Button.A)) setMode(Mode.IDLE);
@@ -120,7 +136,7 @@ public class trackingTeleOp extends BekaBase {
         if (mode != Mode.SHOOT) return;
 
         if (!feeding) {
-            if (shooterTarget <= 0 || Math.abs(velocity - shooterTarget) >= shooterTolerance) {
+            if (!isShooterReady(velocity, shooterTolerance)) {
                 return;
             }
             r.shooter.setFeeding(true);
@@ -137,6 +153,7 @@ public class trackingTeleOp extends BekaBase {
 
     private void setMode(Mode next) {
         mode = next;
+        setShooting(mode == Mode.SHOOT);
         feeding = false;
         r.shooter.setFeeding(false);
         switch (mode) {

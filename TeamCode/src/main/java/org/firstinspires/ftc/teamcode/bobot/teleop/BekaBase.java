@@ -11,11 +11,14 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class BekaBase extends OpMode {
+    private static final double SHOOTER_SPIN_UP_SECONDS = 0.75;
+
     protected GamepadEx first_driver, second_driver;
     protected Robot r;
     protected double deltaTime;
 
     private final ElapsedTime deltaTimer = new ElapsedTime();
+    private final ElapsedTime shooterSpinUpTimer = new ElapsedTime();
     private final Map<LynxModule, LynxModule.BulkCachingMode> previousCacheModes =
             new LinkedHashMap<>();
     private boolean robotInitialized;
@@ -25,6 +28,17 @@ public class BekaBase extends OpMode {
     protected void onStart() {}
 
     protected void onUpdate() {}
+
+    protected void setShooting(boolean shooting) {
+        r.shooter.setStandby(!shooting);
+        if (shooting) shooterSpinUpTimer.reset();
+    }
+
+    protected boolean isShooterReady(double velocity, double tolerance) {
+        double target = r.shooter.getTarget();
+        return shooterSpinUpTimer.seconds() >= SHOOTER_SPIN_UP_SECONDS
+                && target > 0 && Math.abs(velocity - target) < tolerance;
+    }
 
     @Override
     public final void init() {
@@ -44,6 +58,7 @@ public class BekaBase extends OpMode {
         }
         clearBulkCaches();
         deltaTimer.reset();
+        setShooting(false);
         onStart();
     }
 

@@ -11,7 +11,6 @@ import com.pedropathing.math.Pose;
 import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.seattlesolvers.solverslib.command.CommandBase;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
 import com.seattlesolvers.solverslib.command.ParallelCommandGroup;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
@@ -22,7 +21,7 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.bobot.Robot;
 import org.firstinspires.ftc.teamcode.bobot.auto.commands.RobotCommands;
 
-@Autonomous(name = "test_pathes", group = "Autonomous")
+@Autonomous(name = "test_paths", group = "Autonomous")
 public class test_only_path extends LinearOpMode {
     Robot r;
 
@@ -31,7 +30,7 @@ public class test_only_path extends LinearOpMode {
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
     private final Pose start = poseFactory.of(56.1446, 7.8917, 180);
-    private final Pose togarden = poseFactory.of(9, 7.9, 180);
+    private final Pose to_garden = poseFactory.of(9, 7.9, 180);
     private final Pose shoot1Start = poseFactory.of(9, 7.9, 180);
     private final Pose shoot1 = poseFactory.of(46.5, 120, 90);
     private final Pose shoot1Control1 = poseFactory.of(30, 110, 0);
@@ -47,7 +46,7 @@ public class test_only_path extends LinearOpMode {
                 shoot(r, 750),
                 new ParallelCommandGroup(
                         intake(r),
-                        new FollowPathCommand(follower, togarden())
+                        new FollowPathCommand(follower, to_garden())
                 ),
                 new ParallelCommandGroup(
                         spinUp(r),
@@ -75,11 +74,6 @@ public class test_only_path extends LinearOpMode {
     @Override
     public void runOpMode() {
         follower = Constants.create(hardwareMap);
-        if (follower == null) {
-            telemetry.addLine("bruhhh tune constants in pedro");
-            telemetry.update();
-            return;
-        }
         follower.setPose(start);
         follower.update();
         r = Robot.getInstance();
@@ -111,8 +105,8 @@ public class test_only_path extends LinearOpMode {
         }
     }
 
-    public Path togarden() {
-        return Paths.line(start, togarden).linear(start, togarden);
+    public Path to_garden() {
+        return Paths.line(start, to_garden).linear(start, to_garden);
     }
 
     public Path shoot1() {

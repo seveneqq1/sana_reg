@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.drivebase.MecanumDrive;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
+import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -29,11 +30,12 @@ public class Drive extends SubsystemBase {
     public void init(HardwareMap hw) {
         f = Constants.create(hw);
         if (f != null) return;
-
+        //53 58 //85 58 //53 81 //85 81 coordy haivov
         Motor fl = new Motor(hw, "frontleft");
         Motor fr = new Motor(hw, "frontright");
         Motor bl = new Motor(hw, "backleft");
         Motor br = new Motor(hw, "backright");
+
         fr.setInverted(true);
         br.setInverted(true);
         for (Motor motor : new Motor[]{fl, fr, bl, br}) {
@@ -64,8 +66,8 @@ public class Drive extends SubsystemBase {
     }
 
     public void drive(double forward, double strafe, double turn) {
-        if (f != null) f.manual(forward, strafe, turn);
-        else mecanum.driveRobotCentric(strafe, forward, turn);
+        if (f != null) f.manual(forward, -strafe, -turn);
+        else mecanum.driveRobotCentric(-strafe, forward, -turn);
     }
 
     public Pose getPose(){
