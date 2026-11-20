@@ -7,6 +7,7 @@ import com.seattlesolvers.solverslib.command.CommandBase;
 import com.seattlesolvers.solverslib.command.InstantCommand;
 
 import org.firstinspires.ftc.teamcode.bobot.Robot;
+import org.firstinspires.ftc.teamcode.bobot.subsystem.Intake;
 
 @Config
 public class RobotCommands {
@@ -42,6 +43,8 @@ public class RobotCommands {
     public static Command shoot(Robot robot, double feedMs) {
         return new CommandBase() {
             private final ElapsedTime timer = new ElapsedTime();
+            private final ElapsedTime backoffTimer = new ElapsedTime();
+            private boolean backoffStarted;
             private boolean stopperOpen;
             private boolean feeding;
             private boolean done;
@@ -52,6 +55,7 @@ public class RobotCommands {
 
             @Override
             public void initialize() {
+                backoffStarted = false;
                 stopperOpen = false;
                 feeding = false;
                 done = false;
@@ -66,13 +70,24 @@ public class RobotCommands {
                 if (!stopperOpen) {
                     double target = robot.shooter.getTarget();
                     double velocity = Math.abs(robot.shooter.getVel());
-                    if (timer.milliseconds() >= readyTimeoutMs) {
-                        done = true;
-                    } else if (target > 0 && Math.abs(target - velocity) < shooterTolerance) {
-                        robot.shooter.setFeeding(true);
-                        stopperOpen = true;
-                        timer.reset();
+                    boolean ready = target > 0 && Math.abs(target - velocity) < shooterTolerance;
+                    if (!backoffStarted && timer.milliseconds() < readyTimeoutMs && ready) {
+                        robot.intake.beforeShoot();
+                        backoffTimer.reset();
+                        backoffStarted = true;
+                        return;
                     }
+                    if (backoffStarted) {
+                        if (backoffTimer.milliseconds() < Intake.beforeShootMs) return;
+                        robot.intake.spinOff();
+                        if (ready) {
+                            robot.shooter.setFeeding(true);
+                            stopperOpen = true;
+                            timer.reset();
+                            return;
+                        }
+                    }
+                    done = timer.milliseconds() >= readyTimeoutMs;
                 } else if (!feeding) {
                     if (timer.milliseconds() >= stopperOpenDelayMs) {
                         robot.intake.spinSlowShoot();

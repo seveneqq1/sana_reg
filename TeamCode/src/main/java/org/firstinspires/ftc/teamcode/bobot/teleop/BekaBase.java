@@ -11,7 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class BekaBase extends OpMode {
-    private static final double SHOOTER_SPIN_UP_SECONDS = 0.75;
+    private static final double SHOOTER_SPIN_UP_SECONDS = 1;
 
     protected GamepadEx first_driver, second_driver;
     protected Robot r;

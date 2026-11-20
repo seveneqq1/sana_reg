@@ -10,7 +10,7 @@ import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 @Config
 public class Shooter extends SubsystemBase {
-    private static final double STANDBY_SPEED_FRACTION = 0.30;
+    private static final double STANDBY_SPEED_FRACTION = 0.50;
 
     public Shooter(){}
     public MotorEx l, r;
@@ -19,9 +19,9 @@ public class Shooter extends SubsystemBase {
     private double previousTarget;
     private boolean standby;
     public static double blockedPosition = 0.35, feedingPosition = 0.5;
-    public static double kP = 0.0035, kI = 0.01, kD = 0.0;
-    public static double kS = 0.0433, kV = 0.0003265;
-    public static double baseVel = 2200;
+    public static double kP = 0.00345, kI = 0.0, kD = 0.0;
+    public static double kS = 0.0435, kV = 0.0003270;
+    public static double baseVel = 2360;
     public static boolean volComp = false;
     public static boolean on = true;
     public void init(HardwareMap hw){

@@ -17,9 +17,9 @@ import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
 import com.seattlesolvers.solverslib.command.WaitCommand;
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand;
 
-import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.bobot.Robot;
 import org.firstinspires.ftc.teamcode.bobot.auto.commands.RobotCommands;
+import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
 
 @Autonomous(name = "test_paths", group = "Autonomous")
 public class test_only_path extends LinearOpMode {
@@ -27,7 +27,7 @@ public class test_only_path extends LinearOpMode {
 
     private Follower follower;
 
-    private final PoseFactory poseFactory = PoseFactory.degrees();
+    private final PoseFactory poseFactory = PoseFactory.degrees().mirrorY(71);
 
     private final Pose start = poseFactory.of(56.1446, 7.8917, 180);
     private final Pose to_garden = poseFactory.of(9, 7.9, 180);
@@ -73,35 +73,45 @@ public class test_only_path extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        follower = Constants.create(hardwareMap);
-        follower.setPose(start);
-        follower.update();
         r = Robot.getInstance();
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         r.init(hardwareMap, start);
-        r.drive.init(hardwareMap);
+        follower = r.drive.getFollower();
+        follower.update();
 
         waitForStart();
         if (isStopRequested()) return;
 
         CommandScheduler scheduler = CommandScheduler.getInstance();
         SequentialCommandGroup routine = autoRoutine();
+        scheduler.unregisterSubsystem(r.drive);
         try {
+            r.turret.on();
             scheduler.schedule(routine);
             while (opModeIsActive()) {
                 follower.update();
+                Pose pose = follower.pose();
+                Pose target = Turret.selectFieldTarget(pose);
+                r.turret.face(target, pose, follower.velocity().omega);
                 scheduler.run();
 
-                telemetry.addData("x", follower.pose().x());
-                telemetry.addData("y", follower.pose().y());
-                telemetry.addData("heading", follower.pose().heading());
+                telemetry.addData("x", pose.x());
+                telemetry.addData("y", pose.y());
+                telemetry.addData("heading", pose.heading());
+                telemetry.addData("Goal", target);
+                telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
 
                 telemetry.update();
             }
         } finally {
-            scheduler.cancel(routine);
-            follower.stop();
-            follower.update();
+            r.turret.off();
+            try {
+                scheduler.cancel(routine);
+                follower.stop();
+                follower.update();
+            } finally {
+                scheduler.registerSubsystem(r.drive);
+            }
         }
     }
 

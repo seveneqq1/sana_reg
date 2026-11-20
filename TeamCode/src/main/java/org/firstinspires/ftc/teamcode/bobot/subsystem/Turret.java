@@ -8,6 +8,13 @@ import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 
 @Config
 public class Turret extends SubsystemBase {
+    private static final double ANGLE_ROUNDING_TOLERANCE_DEGREES = 1e-9;
+    private static final double FIELD_MIDPOINT = 70.5;
+    private static final Pose SOUTHWEST_TARGET = new Pose(53, 58, 0);
+    private static final Pose SOUTHEAST_TARGET = new Pose(85, 58, 0);
+    private static final Pose NORTHWEST_TARGET = new Pose(53, 81, 0);
+    private static final Pose NORTHEAST_TARGET = new Pose(85, 81, 0);
+
     public static double centerPosition = 0.062;
     public static double centerAngleDegrees = 180.0;
     public static double kV = 1.0 / 422.0;
@@ -24,8 +31,15 @@ public class Turret extends SubsystemBase {
     public void init(HardwareMap hw) {
         servo1 = new ServoEx(hw, "servo1");
         servo2 = new ServoEx(hw, "servo2");
-        servo2.setInverted(true);
         targetAngleDegrees = centerAngleDegrees;
+    }
+
+    public static Pose selectFieldTarget(Pose pose) {
+        boolean east = pose.x() >= FIELD_MIDPOINT;
+        if (pose.y() >= FIELD_MIDPOINT) {
+            return east ? NORTHEAST_TARGET : NORTHWEST_TARGET;
+        }
+        return east ? SOUTHEAST_TARGET : SOUTHWEST_TARGET;
     }
 
     public void face(Pose target, Pose robot) {
@@ -50,8 +64,11 @@ public class Turret extends SubsystemBase {
 
         for (int turns = -2; turns <= 2; turns++) {
             double candidate = desired + turns * 360.0;
+            if (!(candidate >= low - ANGLE_ROUNDING_TOLERANCE_DEGREES
+                    && candidate <= high + ANGLE_ROUNDING_TOLERANCE_DEGREES)) continue;
+            candidate = Math.max(low, Math.min(high, candidate));
             double distance = Math.abs(candidate - targetAngleDegrees);
-            if (candidate >= low && candidate <= high && distance < shortest) {
+            if (distance < shortest) {
                 best = candidate;
                 shortest = distance;
             }

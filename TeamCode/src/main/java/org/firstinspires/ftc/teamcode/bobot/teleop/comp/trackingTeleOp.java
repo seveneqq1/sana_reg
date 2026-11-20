@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 
+import org.firstinspires.ftc.teamcode.bobot.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.bobot.teleop.BekaBase;
 
@@ -29,8 +30,10 @@ public class trackingTeleOp extends BekaBase {
     private final ElapsedTime feedTimer = new ElapsedTime();
     private Mode mode = Mode.IDLE;
     private Pose target;
+    private Pose correctedTarget;
     private boolean tracking = true;
     private boolean manualLastLoop;
+    private boolean backoffStarted;
     private boolean feeding;
     private double previousHeading;
 
@@ -45,17 +48,13 @@ public class trackingTeleOp extends BekaBase {
     protected void onUpdate() {
         if (pressed(GamepadKeys.Button.DPAD_UP)) resetTracking();
         Pose pose = r.drive.getPose();
-        if(pose.x() >= 70.5){
-            targetX = 85;
-        } else {
-            targetX = 53;
+        Pose fieldTarget = Turret.selectFieldTarget(pose);
+        targetX = fieldTarget.x();
+        targetY = fieldTarget.y();
+        if (target.x() != targetX || target.y() != targetY) {
+            target = fieldTarget;
+            correctedTarget = null;
         }
-        if(pose.y() >= 70.5){
-            targetY = 81;
-        } else {
-            targetY = 58;
-        }
-        target = new Pose(targetX, targetY, 0);
         double headingRate = deltaTime > 0
                 ? Turret.normalizeAngle(pose.heading() - previousHeading) / deltaTime : 0;
         previousHeading = pose.heading();
@@ -66,7 +65,7 @@ public class trackingTeleOp extends BekaBase {
         updateDrive();
 
         telemetry.addData("Pose", pose);
-        telemetry.addData("Goal", target);
+        telemetry.addData("Goal", correctedTarget != null ? correctedTarget : target);
         telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getCommandedTarget());
         telemetry.addData("Voltage", voltageSensor.getVoltage());
         telemetry.addData("dt", deltaTime);
@@ -81,6 +80,7 @@ public class trackingTeleOp extends BekaBase {
 
     private void initializeTracking() {
         target = new Pose(targetX, targetY, 0);
+        correctedTarget = null;
         previousHeading = r.drive.getPose().heading();
         tracking = true;
         manualLastLoop = false;
@@ -100,7 +100,10 @@ public class trackingTeleOp extends BekaBase {
     private void updateTurret(Pose pose, double headingRate) {
         if (pressed(GamepadKeys.Button.DPAD_LEFT)) {
             tracking = !tracking;
-            if (!tracking) r.turret.setYaw(0);
+            if (!tracking) {
+                correctedTarget = null;
+                r.turret.setYaw(0);
+            }
         }
 
         boolean left = gamepad1.left_bumper;
@@ -110,21 +113,21 @@ public class trackingTeleOp extends BekaBase {
             double step = Math.toRadians(manualTurretDegreesPerSecond * Math.min(deltaTime, 0.1));
             r.turret.addYaw(left ? step : -step);
         } else if (tracking) {
-            if (manualLastLoop) lockTargetHere(pose);
-            r.turret.face(target, pose, headingRate);
+            if (manualLastLoop) lockTargetHere(pose, headingRate);
+            r.turret.face(correctedTarget != null ? correctedTarget : target, pose, headingRate);
         }
-        manualLastLoop = manual;
+        manualLastLoop = manual && tracking;
     }
 
-    private void lockTargetHere(Pose pose) {
-        double angle = pose.heading() + r.turret.getYaw();
+    private void lockTargetHere(Pose pose, double headingRate) {
+        double angle = pose.heading() + headingRate * Turret.turnLeadSeconds + r.turret.getYaw();
         double sin = Math.sin(angle);
         double distance = Math.abs(sin) > 0.2 ? (target.y() - pose.y()) / sin : -1;
-        if (distance > 0) {
-            target = new Pose(pose.x() + distance * Math.cos(angle), target.y(), 0);
+        if (distance >= 1) {
+            correctedTarget = new Pose(pose.x() + distance * Math.cos(angle), target.y(), 0);
         } else {
             distance = Math.max(1, Math.hypot(target.x() - pose.x(), target.y() - pose.y()));
-            target = new Pose(pose.x() + distance * Math.cos(angle), pose.y() + distance * sin, 0);
+            correctedTarget = new Pose(pose.x() + distance * Math.cos(angle), pose.y() + distance * sin, 0);
         }
     }
 
@@ -136,9 +139,19 @@ public class trackingTeleOp extends BekaBase {
         if (mode != Mode.SHOOT) return;
 
         if (!feeding) {
-            if (!isShooterReady(velocity, shooterTolerance)) {
+            boolean ready = isShooterReady(velocity, shooterTolerance);
+            if (!backoffStarted) {
+                if (ready) {
+                    r.intake.beforeShoot();
+                    feedTimer.reset();
+                    backoffStarted = true;
+                }
                 return;
             }
+            if (feedTimer.milliseconds() < Intake.beforeShootMs) return;
+
+            r.intake.spinOff();
+            if (!ready) return;
             r.shooter.setFeeding(true);
             feedTimer.reset();
             feeding = true;
@@ -154,6 +167,7 @@ public class trackingTeleOp extends BekaBase {
     private void setMode(Mode next) {
         mode = next;
         setShooting(mode == Mode.SHOOT);
+        backoffStarted = false;
         feeding = false;
         r.shooter.setFeeding(false);
         switch (mode) {

@@ -76,6 +76,10 @@ public class Drive extends SubsystemBase {
                 pinpoint.getPosY(DistanceUnit.INCH), pinpoint.getHeading(AngleUnit.RADIANS));
     }
 
+    public Follower getFollower() {
+        return f;
+    }
+
     @Override
     public void periodic() {
         if (f != null) f.update();

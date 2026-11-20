@@ -10,7 +10,8 @@ import com.seattlesolvers.solverslib.hardware.motors.Motor;
 public class Intake extends SubsystemBase {
     private Motor intake;
     private Motor transfer;
-    public static double intakeShoot = 0.5, transShoot = 0.5;
+    public static double beforeShootMs = 50;
+    public static double intakeShoot = 0.3, transShoot = 0.55;
 
     public void init(HardwareMap hw) {
         intake = new Motor(hw, "intake");
@@ -42,6 +43,7 @@ public class Intake extends SubsystemBase {
     public void spinShoot() {
         setPower(1.0, 1.0);
     }
+    public void beforeShoot() { setPower(-0.25, -0.3); }
 
     public void spinSlowShoot() {
         setPower(intakeShoot, transShoot);
