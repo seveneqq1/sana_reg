@@ -19,9 +19,9 @@ public class Shooter extends SubsystemBase {
     private double previousTarget;
     private boolean standby;
     public static double blockedPosition = 0.35, feedingPosition = 0.5;
-    public static double kP = 0.00345, kI = 0.0, kD = 0.0;
-    public static double kS = 0.0435, kV = 0.0003270;
-    public static double baseVel = 2360;
+    public static double kP = 0.003485, kI = 0.0, kD = 0.0;
+    public static double kS = 0.033, kV = 0.0003045;
+    public static double baseVel = 2350;
     public static boolean volComp = false;
     public static boolean on = true;
     public void init(HardwareMap hw){

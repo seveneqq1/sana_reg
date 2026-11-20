@@ -9,7 +9,6 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 
-import org.firstinspires.ftc.teamcode.bobot.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.bobot.teleop.BekaBase;
 
@@ -33,7 +32,6 @@ public class trackingTeleOpDebug extends BekaBase {
     private Pose correctedTarget;
     private boolean tracking = true;
     private boolean manualLastLoop;
-    private boolean backoffStarted;
     private boolean feeding;
     private double previousHeading;
     private double min_Volts = 100;
@@ -151,19 +149,9 @@ public class trackingTeleOpDebug extends BekaBase {
         if (mode != Mode.SHOOT) return;
 
         if (!feeding) {
-            boolean ready = isShooterReady(velocity, shooterTolerance);
-            if (!backoffStarted) {
-                if (ready) {
-                    r.intake.beforeShoot();
-                    feedTimer.reset();
-                    backoffStarted = true;
-                }
+            if (!isShooterReady(velocity, shooterTolerance)) {
                 return;
             }
-            if (feedTimer.milliseconds() < Intake.beforeShootMs) return;
-
-            r.intake.spinOff();
-            if (!ready) return;
             r.shooter.setFeeding(true);
             feedTimer.reset();
             feeding = true;
@@ -179,7 +167,6 @@ public class trackingTeleOpDebug extends BekaBase {
     private void setMode(Mode next) {
         mode = next;
         setShooting(mode == Mode.SHOOT);
-        backoffStarted = false;
         feeding = false;
         r.shooter.setFeeding(false);
         switch (mode) {

@@ -4,28 +4,50 @@ import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.seattlesolvers.solverslib.command.InstantCommand;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
-import com.seattlesolvers.solverslib.hardware.motors.Motor;
+import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
+
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 @Config
 public class Intake extends SubsystemBase {
-    private Motor intake;
-    private Motor transfer;
-    public static double beforeShootMs = 50;
+    private MotorEx intake;
+    private MotorEx transfer;
+    private boolean transferCutoff;
+    private boolean outtaking;
     public static double intakeShoot = 0.3, transShoot = 0.55;
+    public static double transferCurrentLimitMilliamps = 5250.0;
 
     public void init(HardwareMap hw) {
-        intake = new Motor(hw, "intake");
-        transfer = new Motor(hw, "trans");
-        intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-        transfer.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+        intake = new MotorEx(hw, "intake");
+        transfer = new MotorEx(hw, "trans");
+        intake.setZeroPowerBehavior(MotorEx.ZeroPowerBehavior.BRAKE);
+        transfer.setZeroPowerBehavior(MotorEx.ZeroPowerBehavior.BRAKE);
         intake.setInverted(true);
         transfer.setInverted(true);
-        spinOff();
+        intake.stopMotor();
+        transfer.stopMotor();
+        transferCutoff = false;
+        outtaking = false;
     }
 
     private void setPower(double intakePower, double transferPower) {
+        setPower(intakePower, transferPower, false);
+    }
+
+    private void setPower(double intakePower, double transferPower, boolean outtaking) {
+        this.outtaking = outtaking;
         intake.set(-intakePower);
-        transfer.set(transferPower);
+        if (transferPower == 0.0) transferCutoff = false;
+        transfer.set(transferCutoff && !outtaking ? 0.0 : transferPower);
+    }
+
+    @Override
+    public void periodic() {
+        if (!outtaking && transfer != null && transfer.get() != 0.0
+                && transfer.getCurrent(CurrentUnit.MILLIAMPS) > transferCurrentLimitMilliamps) {
+            transferCutoff = true;
+            transfer.set(0.0);
+        }
     }
 
     public void spinIn() {
@@ -33,7 +55,7 @@ public class Intake extends SubsystemBase {
     }
 
     public void spinOut() {
-        setPower(-0.8, -0.8);
+        setPower(-0.8, -0.8, true);
     }
 
     public void spinOff() {

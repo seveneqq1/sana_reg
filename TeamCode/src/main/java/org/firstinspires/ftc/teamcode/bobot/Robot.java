@@ -55,6 +55,7 @@ public class Robot {
 
     public void periodic() {
         drive.periodic();
+        intake.periodic();
         shooter.periodic();
         turret.periodic();
     }
