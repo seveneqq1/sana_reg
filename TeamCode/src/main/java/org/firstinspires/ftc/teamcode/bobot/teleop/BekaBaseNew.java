@@ -6,7 +6,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 
-import org.firstinspires.ftc.teamcode.bobot.Robot;
+import org.firstinspires.ftc.teamcode.bobot.RobotNew;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -14,7 +14,7 @@ import java.util.Map;
 public class BekaBaseNew extends OpMode {
 
     protected GamepadEx first_driver, second_driver;
-    protected Robot r;
+    protected RobotNew r;
     protected double deltaTime;
 
     private final ElapsedTime deltaTimer = new ElapsedTime();
@@ -42,7 +42,7 @@ public class BekaBaseNew extends OpMode {
         first_driver = new GamepadEx(gamepad1);
         second_driver = new GamepadEx(gamepad2);
 
-        r = Robot.getInstance();
+        r = RobotNew.getInstance();
         r.init(hardwareMap);
         robotInitialized = true;
 

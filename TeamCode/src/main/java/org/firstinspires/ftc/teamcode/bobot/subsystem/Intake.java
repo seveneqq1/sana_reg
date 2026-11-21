@@ -14,8 +14,8 @@ public class Intake extends SubsystemBase {
     private MotorEx transfer;
     private boolean transferCutoff;
     private boolean outtaking;
-    public static double intakeShoot = 0.3, transShoot = 0.55;
-    public static double transferCurrentLimitMilliamps = 5250.0;
+    public static double intakeShoot = 0.3, transShoot = 0.6705;
+    public static double transferCurrentLimitMilliamps = 5500.0;
 
     public void init(HardwareMap hw) {
         intake = new MotorEx(hw, "intake");
@@ -23,7 +23,7 @@ public class Intake extends SubsystemBase {
         intake.setZeroPowerBehavior(MotorEx.ZeroPowerBehavior.BRAKE);
         transfer.setZeroPowerBehavior(MotorEx.ZeroPowerBehavior.BRAKE);
         intake.setInverted(true);
-        transfer.setInverted(true);
+        transfer.setInverted(false);
         intake.stopMotor();
         transfer.stopMotor();
         transferCutoff = false;

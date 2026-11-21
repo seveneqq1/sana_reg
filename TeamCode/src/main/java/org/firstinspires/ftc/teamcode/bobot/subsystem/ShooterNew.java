@@ -1,4 +1,3 @@
-
 package org.firstinspires.ftc.teamcode.bobot.subsystem;
 
 import com.acmerobotics.dashboard.config.Config;
@@ -25,14 +24,25 @@ public class ShooterNew extends SubsystemBase {
     private Servo stopper;
     private VoltageSensor voltageSensor;
 
+    public static boolean predictiveCompEnabled = false;
+    public static double shotBoost = 0.054;
+    public static double shotBoostDuration = 0.32;
+    public static double shotBoostDelay = 0.235;
+    public void anticipateShot() {
+        if (!on || getCommandedTarget() <= 0) return;
+
+        lastShotTime = System.nanoTime();
+    }
+    private long lastShotTime = -1;
+    public double predictivePower = 0;
     public static double blockedPosition = 0.35, feedingPosition = 0.5;
-    public static double kP = 0.003485, kI = 0.0, kD = 0.0;
-    public static double kS = 0.033, kV = 0.0003045;
-    public static double baseVel = 2350, offsetTuner = 0;
+    public static double kP = 0.001, kI = 0.0, kD = 0.0;
+    public static double kS = 0.0433, kV = 0.00035;
+    public static double baseVel = 2420, offsetTuner = 0;
     public static double nominalVoltage = 12.0;
     public static double integralLimit = 1000;
 
-    public static boolean volComp = false;
+    public static boolean volComp = true;
     public static boolean on = true;
 
     private double previousTarget = 0;
@@ -195,6 +205,22 @@ public class ShooterNew extends SubsystemBase {
         double pidPower = kP * error + kI * integral + kD * derivative;
         double feedforwardPower = kS + kV * target;
 
+        double timeSinceShot = lastShotTime < 0
+                ? -1
+                : (currentTime - lastShotTime) * 1e-9;
+
+        boolean boosting = predictiveCompEnabled
+                && Double.isFinite(shotBoost)
+                && shotBoost >= 0
+                && Double.isFinite(shotBoostDelay)
+                && shotBoostDelay >= 0
+                && Double.isFinite(shotBoostDuration)
+                && shotBoostDuration > 0
+                && timeSinceShot >= shotBoostDelay
+                && timeSinceShot < shotBoostDelay + shotBoostDuration;
+
+        predictivePower = boosting ? shotBoost : 0;
+
         double batteryVoltage = volComp ? getVoltage() : nominalVoltage;
 
         if(!Double.isFinite(batteryVoltage) || batteryVoltage <= 1){
@@ -202,7 +228,7 @@ public class ShooterNew extends SubsystemBase {
             return;
         }
 
-        double output = (pidPower + feedforwardPower)
+        double output = (pidPower + feedforwardPower + predictivePower)
                 * nominalVoltage / batteryVoltage;
 
         set(Double.isFinite(output) ? Math.max(0, Math.min(1, output)) : 0);

@@ -35,6 +35,7 @@ public class DebugNew extends BekaBaseNew {
     private boolean tracking = true;
     private boolean manualLastLoop;
     private boolean feeding;
+    private boolean compensationTriggered = false;
     private double previousHeading;
     private double min_Volts = 100;
 
@@ -93,6 +94,8 @@ public class DebugNew extends BekaBaseNew {
         telemetry.addData("Minimum Voltage", min_Volts);
         telemetry.addData("dt", deltaTime);
         telemetry.addData("freq", deltaTime > 0 ? 1 / deltaTime : 0);
+        telemetry.addData("shooter motor power", r.shooter.l.getPower());
+        telemetry.addData("Predictive Power", r.shooter.predictivePower);
         telemetry.update();
     }
 
@@ -180,10 +183,24 @@ public class DebugNew extends BekaBaseNew {
 
         double elapsed = feedTimer.seconds();
 
-        if (elapsed >= shootTime) setMode(Mode.INTAKE);
-        else if (elapsed < stopperOpenDelay) r.intake.spinOff();
-        else if (elapsed < stopperOpenDelay + feedKickTime) r.intake.spinShoot();
-        else r.intake.spinSlowShoot();
+        if (elapsed >= shootTime) {
+            setMode(Mode.INTAKE);
+
+        } else if (elapsed < stopperOpenDelay) {
+            r.intake.spinOff();
+
+        } else {
+            if (!compensationTriggered) {
+                r.shooter.anticipateShot();
+                compensationTriggered = true;
+            }
+
+            if (elapsed < stopperOpenDelay + feedKickTime) {
+                r.intake.spinShoot();
+            } else {
+                r.intake.spinSlowShoot();
+            }
+        }
     }
 
     private void setMode(Mode next) {
