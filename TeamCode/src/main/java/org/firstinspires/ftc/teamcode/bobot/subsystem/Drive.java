@@ -49,6 +49,7 @@ public class Drive extends SubsystemBase {
         pinpoint.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED,
                 GoBildaPinpointDriver.EncoderDirection.FORWARD);
         pinpoint.resetPosAndIMU();
+        pinpoint.recalibrateIMU();
     }
 
     public void resetPos() {

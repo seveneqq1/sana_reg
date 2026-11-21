@@ -32,6 +32,8 @@ public class Turret extends SubsystemBase {
         servo1 = new ServoEx(hw, "servo1");
         servo2 = new ServoEx(hw, "servo2");
         targetAngleDegrees = centerAngleDegrees;
+        servo1.setCachingTolerance(0.0001);
+        servo2.setCachingTolerance(0.0001);
     }
 
     public static Pose selectFieldTarget(Pose pose) {

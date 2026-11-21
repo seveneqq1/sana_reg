@@ -10,7 +10,7 @@ import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 @Config
 public class Shooter extends SubsystemBase {
-    private static final double STANDBY_SPEED_FRACTION = 0.50;
+    private static final double STANDBY_SPEED_FRACTION = 0.0;
 
     public Shooter(){}
     public MotorEx l, r;
@@ -30,6 +30,8 @@ public class Shooter extends SubsystemBase {
         r.setInverted(true);
         stopper = hw.get(Servo.class, "stopper");
         setFeeding(false);
+        l.setCachingTolerance(0.003);
+        r.setCachingTolerance(0.003);
     }
     public void set(double p){
         l.set(p);

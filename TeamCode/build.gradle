@@ -30,4 +30,8 @@ dependencies {
     implementation 'org.solverslib:pedroPathing:0.3.6'
 
     implementation 'dev.frozenmilk.sinister:Sloth:0.3.2'
+
+    implementation("dev.nextftc:control:1.0.0")
+
+    implementation 'dev.frozenmilk.dairy:CachingHardware:1.0.0'
 }

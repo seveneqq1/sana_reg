@@ -28,6 +28,8 @@ public class Intake extends SubsystemBase {
         transfer.stopMotor();
         transferCutoff = false;
         outtaking = false;
+        intake.setCachingTolerance(0.05);
+        transfer.setCachingTolerance(0.05);
     }
 
     private void setPower(double intakePower, double transferPower) {
