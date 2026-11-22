@@ -79,7 +79,12 @@ public class BekaBase extends OpMode {
         try {
             if (robotInitialized) {
                 clearBulkCaches();
-                r.turnOff();
+                try {
+                    r.drive.periodic();
+                    r.saveEnd();
+                } finally {
+                    r.turnOff();
+                }
             }
         } finally {
             robotInitialized = false;

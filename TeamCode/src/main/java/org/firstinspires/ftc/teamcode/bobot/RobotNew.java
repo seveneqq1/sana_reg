@@ -15,6 +15,7 @@ import org.firstinspires.ftc.teamcode.bobot.subsystem.Drive;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Flower;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
+import org.firstinspires.ftc.teamcode.bobot.util.PoseStorage;
 
 import dev.frozenmilk.dairy.cachinghardware.CachingDcMotorEx;
 
@@ -35,7 +36,7 @@ public class RobotNew {
     }
 
     public void init(HardwareMap hw) {
-        init(hw, defaultPose);
+        init(hw, PoseStorage.getOrDefault(defaultPose));
     }
 
     public void init(HardwareMap hw, Pose startPose) {
@@ -70,7 +71,7 @@ public class RobotNew {
     }
 
     public void saveEnd() {
-        defaultPose = drive.getPose();
+        PoseStorage.save(drive.getPose());
     }
 
     @Config

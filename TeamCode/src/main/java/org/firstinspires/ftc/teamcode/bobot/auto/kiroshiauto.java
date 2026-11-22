@@ -102,6 +102,7 @@ public class kiroshiauto extends LinearOpMode {
                 scheduler.cancel(routine);
                 follower.stop();
                 follower.update();
+                r.saveEnd();
             } finally {
                 scheduler.registerSubsystem(r.drive);
             }

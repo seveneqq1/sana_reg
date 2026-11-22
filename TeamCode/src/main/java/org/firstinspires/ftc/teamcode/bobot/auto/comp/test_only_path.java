@@ -109,6 +109,7 @@ public class test_only_path extends LinearOpMode {
                 scheduler.cancel(routine);
                 follower.stop();
                 follower.update();
+                r.saveEnd();
             } finally {
                 scheduler.registerSubsystem(r.drive);
             }

@@ -8,6 +8,7 @@ import org.firstinspires.ftc.teamcode.bobot.subsystem.Flower;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
+import org.firstinspires.ftc.teamcode.bobot.util.PoseStorage;
 
 public class Robot {
     private static final Robot INSTANCE = new Robot();
@@ -26,7 +27,7 @@ public class Robot {
     }
 
     public void init(HardwareMap hw) {
-        init(hw, defaultPose);
+        init(hw, PoseStorage.getOrDefault(defaultPose));
     }
 
     public void init(HardwareMap hw, Pose startPose) {
@@ -61,6 +62,6 @@ public class Robot {
     }
 
     public void saveEnd() {
-        defaultPose = drive.getPose();
+        PoseStorage.save(drive.getPose());
     }
 }
