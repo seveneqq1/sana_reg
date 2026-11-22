@@ -18,6 +18,8 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 @Config
 public class Drive extends SubsystemBase {
+    public static double stickDeadband = 0.05;
+
     private Follower f;
     private MecanumDrive mecanum;
     private GoBildaPinpointDriver pinpoint;
@@ -67,6 +69,12 @@ public class Drive extends SubsystemBase {
     }
 
     public void drive(double forward, double strafe, double turn) {
+        if (Math.hypot(forward, strafe) <= stickDeadband) {
+            forward = 0;
+            strafe = 0;
+        }
+        if (Math.abs(turn) <= stickDeadband) turn = 0;
+
         if (f != null) f.manual(forward, -strafe, -turn);
         else mecanum.driveRobotCentric(-strafe, forward, -turn);
     }

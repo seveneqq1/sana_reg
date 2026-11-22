@@ -88,14 +88,13 @@ public class DebugNew extends BekaBaseNew {
 
         telemetry.addData("Pose", pose);
         telemetry.addData("Goal", correctedTarget != null ? correctedTarget : target);
-        telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getCommandedTarget());
+        telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getActiveTargetTPS());
         telemetry.addData("Shooter Ready", isShooterReady(velocity, shooterTolerance));
         telemetry.addData("Voltage", voltageSensor.getVoltage());
         telemetry.addData("Minimum Voltage", min_Volts);
         telemetry.addData("dt", deltaTime);
         telemetry.addData("freq", deltaTime > 0 ? 1 / deltaTime : 0);
         telemetry.addData("shooter motor power", r.shooter.l.getPower());
-        telemetry.addData("Predictive Power", r.shooter.predictivePower);
         telemetry.update();
     }
 
@@ -206,6 +205,7 @@ public class DebugNew extends BekaBaseNew {
     private void setMode(Mode next) {
         mode = next;
         feeding = false;
+        compensationTriggered = false;
         r.shooter.setFeeding(false);
 
         switch (mode) {
