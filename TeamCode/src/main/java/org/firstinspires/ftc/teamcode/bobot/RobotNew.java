@@ -83,10 +83,10 @@ public class RobotNew {
         private Servo stopper;
         private VoltageSensor voltageSensor;
 
-        public static boolean predictiveCompEnabled = false;
+        public static boolean predictiveCompEnabled = true;
         public static double shotBoostTPS = 40;
-        public static double shotBoostDuration = 0.32;
-        public static double shotBoostDelay = 0.235;
+        public static double shotBoostDuration = 0.3;
+        public static double shotBoostDelay = 0;
         public void anticipateShot() {
             if (!on || getCommandedTarget() <= 0) return;
 
@@ -95,8 +95,8 @@ public class RobotNew {
         private long lastShotTime = -1;
         public static double blockedPosition = 0.35, feedingPosition = 0.5;
         public static double kP = 0.001, kI = 0.0, kD = 0.0;
-        public static double kS = 0.0433, kV = 0.00035;
-        public static double baseVel = 2420, offsetTuner = 0;
+        public static double kS = 0.065, kV = 0.00035;
+        public static double baseVel = 2400, offsetTuner = 0;
         public static double nominalVoltage = 12.0;
         public static double integralLimit = 1000;
 

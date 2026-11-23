@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.bobot.teleop.comp;
+package org.firstinspires.ftc.teamcode.bobot.teleop.tests;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
@@ -46,7 +46,7 @@ public class trackingTeleOp extends BekaBase {
     protected void onUpdate() {
         if (pressed(GamepadKeys.Button.DPAD_UP)) resetTracking();
         Pose pose = r.drive.getPose();
-        Pose fieldTarget = Turret.selectFieldTarget(pose);
+        Pose fieldTarget = selectFieldTarget(pose);
         targetX = fieldTarget.x();
         targetY = fieldTarget.y();
         if (target.x() != targetX || target.y() != targetY) {
@@ -69,6 +69,10 @@ public class trackingTeleOp extends BekaBase {
         telemetry.addData("dt", deltaTime);
         telemetry.addData("freq", 1 / deltaTime);
         telemetry.update();
+    }
+
+    protected Pose selectFieldTarget(Pose pose) {
+        return Turret.selectFieldTarget(pose);
     }
 
     private void resetTracking() {

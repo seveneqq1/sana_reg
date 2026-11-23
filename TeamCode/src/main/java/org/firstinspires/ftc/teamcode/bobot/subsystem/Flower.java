@@ -9,9 +9,11 @@ import com.seattlesolvers.solverslib.command.SubsystemBase;
 public class Flower extends SubsystemBase {
     private Servo flower;
     private boolean beka = false;
-    public static double OPEN_POS = 0.5, CLOSE_POS = 0;
+    public static double closeee = 0.26;
+    public static double OPEN_POS = 1, CLOSE_POS = closeee;
     public void init(HardwareMap hw){
         flower = hw.get(Servo.class, "flower");
+        closeFlower();
     }
     public void setPos(double pos){
         flower.setPosition(pos);
@@ -23,6 +25,10 @@ public class Flower extends SubsystemBase {
     public void closeFlower(){
         beka = false;
         setPos(CLOSE_POS);
+    }
+    public void toggleFlower(){
+        if (isFlowerOpen()) closeFlower();
+        else openFlower();
     }
     public boolean isFlowerOpen(){ return beka; }
 }

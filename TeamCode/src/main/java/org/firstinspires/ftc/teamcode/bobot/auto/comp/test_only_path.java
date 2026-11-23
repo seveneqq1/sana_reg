@@ -27,7 +27,7 @@ public class test_only_path extends LinearOpMode {
 
     private Follower follower;
 
-    private final PoseFactory poseFactory = PoseFactory.degrees().mirrorY(71);
+    private final PoseFactory poseFactory = PoseFactory.degrees();
 
     private final Pose start = poseFactory.of(56.1446, 7.8917, 180);
     private final Pose to_garden = poseFactory.of(9, 7.9, 180);

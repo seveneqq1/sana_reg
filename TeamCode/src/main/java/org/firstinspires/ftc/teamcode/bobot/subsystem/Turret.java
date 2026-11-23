@@ -23,7 +23,6 @@ public class Turret extends SubsystemBase {
     public static boolean reverseServo1 = false;
     public static boolean reverseServo2 = false;
     public static double turnLeadSeconds = 0.0;
-
     private ServoEx servo1, servo2;
     private double targetAngleDegrees;
     private boolean on = true;
@@ -37,8 +36,12 @@ public class Turret extends SubsystemBase {
     }
 
     public static Pose selectFieldTarget(Pose pose) {
+        return selectFieldTarget(pose, pose.y() >= FIELD_MIDPOINT);
+    }
+
+    public static Pose selectFieldTarget(Pose pose, boolean north) {
         boolean east = pose.x() >= FIELD_MIDPOINT;
-        if (pose.y() >= FIELD_MIDPOINT) {
+        if (north) {
             return east ? NORTHEAST_TARGET : NORTHWEST_TARGET;
         }
         return east ? SOUTHEAST_TARGET : SOUTHWEST_TARGET;

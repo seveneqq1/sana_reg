@@ -56,17 +56,9 @@ public class DebugNew extends BekaBaseNew {
 
         Pose pose = r.drive.getPose();
 
-        if(pose.x() >= 70.5){
-            targetX = 85;
-        } else {
-            targetX = 53;
-        }
-
-        if(pose.y() >= 70.5){
-            targetY = 81;
-        } else {
-            targetY = 58;
-        }
+        Pose fieldTarget = selectFieldTarget(pose);
+        targetX = fieldTarget.x();
+        targetY = fieldTarget.y();
 
         if (target.x() != targetX || target.y() != targetY) {
             target = new Pose(targetX, targetY, 0);
@@ -96,6 +88,10 @@ public class DebugNew extends BekaBaseNew {
         telemetry.addData("freq", deltaTime > 0 ? 1 / deltaTime : 0);
         telemetry.addData("shooter motor power", r.shooter.l.getPower());
         telemetry.update();
+    }
+
+    protected Pose selectFieldTarget(Pose pose) {
+        return Turret.selectFieldTarget(pose);
     }
 
     private void resetTracking() {

@@ -5,6 +5,7 @@ import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
+import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 
 import org.firstinspires.ftc.teamcode.bobot.RobotNew;
 
@@ -74,6 +75,9 @@ public class BekaBaseNew extends OpMode {
 
         first_driver.readButtons();
         second_driver.readButtons();
+        if (first_driver.wasJustPressed(GamepadKeys.Button.DPAD_DOWN)) {
+            r.flower.toggleFlower();
+        }
 
         r.shooter.setStandby(false);
 
