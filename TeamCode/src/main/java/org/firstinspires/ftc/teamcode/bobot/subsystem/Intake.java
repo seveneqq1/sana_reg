@@ -14,8 +14,8 @@ public class Intake extends SubsystemBase {
     private MotorEx transfer;
     private boolean transferCutoff;
     private boolean outtaking;
-    public static double intakeShoot = 0.3, transShoot = 0.4;
-    public static double transferCurrentLimitMilliamps = 4000.0;
+    public static double intakeShoot = 0.36, transShoot = 0.88;
+    public static double transferCurrentLimitMilliamps = 6500.0;
 
     public void init(HardwareMap hw) {
         intake = new MotorEx(hw, "intake");

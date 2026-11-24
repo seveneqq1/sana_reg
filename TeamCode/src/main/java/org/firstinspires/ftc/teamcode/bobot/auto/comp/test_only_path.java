@@ -24,7 +24,6 @@ import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
 @Autonomous(name = "test_paths", group = "Autonomous")
 public class test_only_path extends LinearOpMode {
     Robot r;
-
     private Follower follower;
 
     private final PoseFactory poseFactory = PoseFactory.degrees();
@@ -35,7 +34,7 @@ public class test_only_path extends LinearOpMode {
     private final Pose shoot1 = poseFactory.of(46.5, 120, 90);
     private final Pose shoot1Control1 = poseFactory.of(30, 110, 0);
     private final Pose flowerStart = poseFactory.of(46.5, 120, 90);
-    private final Pose flower = poseFactory.of(46.5, 132, 90);
+    private final Pose flower = poseFactory.of(46.5, 126, 90);
     private final Pose parkStart = poseFactory.of(46.5, 132, 90);
     private final Pose park = poseFactory.of(7.5, 120, 0);
     private final Pose parkControl1 = poseFactory.of(40, 116, 0);
@@ -43,6 +42,7 @@ public class test_only_path extends LinearOpMode {
     private SequentialCommandGroup autoRoutine() {
         return new SequentialCommandGroup(
                 spinUp(r),
+                new WaitCommand(1000),
                 shoot(r, 750),
                 new ParallelCommandGroup(
                         intake(r),
@@ -55,9 +55,14 @@ public class test_only_path extends LinearOpMode {
                 shoot(r, 750),
                 new ParallelCommandGroup(
                         intakeFlower(r),
-                        intake(r),
-                        new FollowPathCommand(follower, flower()),
-                        spinUp(r)
+                        new SequentialCommandGroup(
+                                new WaitCommand(500),
+                                new ParallelCommandGroup(
+                                        intake(r),
+                                        new FollowPathCommand(follower, flower()),
+                                        spinUp(r)
+                                )
+                        )
                 ),
                 shoot(r, 750),
                 new ParallelCommandGroup(

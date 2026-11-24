@@ -24,7 +24,7 @@ public class DebugNew extends BekaBaseNew {
     public static double shooterTolerance = 120;
     public static double stopperOpenDelay = 0.15;
     public static double feedKickTime = 0;
-    public static double shootTime = 1.5;
+    public static double shootTime = 2.4;
 
     private enum Mode { IDLE, INTAKE, OUTTAKE, SHOOT }
 

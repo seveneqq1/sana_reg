@@ -3,12 +3,15 @@ package org.firstinspires.ftc.teamcode.bobot.subsystem;
 import com.acmerobotics.dashboard.config.Config;
 import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.seattlesolvers.solverslib.command.Command;
+import com.seattlesolvers.solverslib.command.InstantCommand;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 
 @Config
 public class Turret extends SubsystemBase {
     private static final double ANGLE_ROUNDING_TOLERANCE_DEGREES = 1e-9;
+    public static double nurikGay = 422.0;
     private static final double FIELD_MIDPOINT = 70.5;
     private static final Pose SOUTHWEST_TARGET = new Pose(53, 58, 0);
     private static final Pose SOUTHEAST_TARGET = new Pose(85, 58, 0);
@@ -17,7 +20,7 @@ public class Turret extends SubsystemBase {
 
     public static double centerPosition = 0.062;
     public static double centerAngleDegrees = 180.0;
-    public static double kV = 1.0 / 422.0;
+    public static double kV = 1.0 / nurikGay;
     public static double minAngleDegrees = -60.0;
     public static double maxAngleDegrees = 600.0;
     public static boolean reverseServo1 = false;
@@ -25,12 +28,14 @@ public class Turret extends SubsystemBase {
     public static double turnLeadSeconds = 0.0;
     private ServoEx servo1, servo2;
     private double targetAngleDegrees;
+    private double aimTrimRadians;
     private boolean on = true;
 
     public void init(HardwareMap hw) {
         servo1 = new ServoEx(hw, "servo1");
         servo2 = new ServoEx(hw, "servo2");
         targetAngleDegrees = centerAngleDegrees;
+        aimTrimRadians = 0;
         servo1.setCachingTolerance(0.0001);
         servo2.setCachingTolerance(0.0001);
     }
@@ -57,7 +62,7 @@ public class Turret extends SubsystemBase {
         if (dx == 0 && dy == 0) return;
 
         double predictedHeading = robot.heading() + headingRateRadPerSec * turnLeadSeconds;
-        setYaw(Math.atan2(dy, dx) - predictedHeading);
+        setYaw(Math.atan2(dy, dx) - predictedHeading + aimTrimRadians);
     }
 
     public void setYaw(double radians) {
@@ -104,6 +109,12 @@ public class Turret extends SubsystemBase {
         on = false;
     }
 
+    public void nudge() {
+        // Keep the correction when face() recalculates tracking on the next loop.
+        aimTrimRadians += 0.3;
+        addYaw(0.3);
+    }
+
     @Override
     public void periodic() {
         if (on) {
@@ -121,6 +132,8 @@ public class Turret extends SubsystemBase {
     private static double lowLimit() {
         return Math.max(minAngleDegrees, centerAngleDegrees - centerPosition / kV) + 0.5;
     }
+
+    public Command nudgeleft() { return new InstantCommand(this::nudge, this); }
 
     private static double highLimit() {
         return Math.min(maxAngleDegrees, centerAngleDegrees + (1.0 - centerPosition) / kV) - 0.5;
