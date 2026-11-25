@@ -98,6 +98,7 @@ public class BekaBaseNew extends OpMode {
                 }
             }
         } finally {
+            if (r != null) r.limelight.stop();
             robotInitialized = false;
 
             for (Map.Entry<LynxModule, LynxModule.BulkCachingMode> entry

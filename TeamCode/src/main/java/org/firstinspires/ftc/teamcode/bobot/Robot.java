@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Drive;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Flower;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Intake;
+import org.firstinspires.ftc.teamcode.bobot.subsystem.Limelight;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.bobot.util.PoseStorage;
@@ -17,6 +18,7 @@ public class Robot {
     public final Drive drive = new Drive();
     public final Intake intake = new Intake();
     public final Shooter shooter = new Shooter();
+    public final Limelight limelight = new Limelight();
     public final Turret turret = new Turret();
     public final Flower flower = new Flower();
 
@@ -35,10 +37,11 @@ public class Robot {
         intake.init(hw);
         shooter.init(hw);
         shooter.turnOff();
-        turret.init(hw);
+        turret.init(hw, limelight);
         turret.off();
         flower.init(hw);
         flower.closeFlower();
+        limelight.init(hw);
     }
     public void turnOn() {
         shooter.turnOn();
@@ -49,6 +52,7 @@ public class Robot {
         intake.spinOff();
         shooter.turnOff();
         turret.off();
+        limelight.stop();
         drive.drive(0.0, 0.0, 0.0);
         drive.periodic();
         flower.closeFlower();
@@ -58,6 +62,7 @@ public class Robot {
         drive.periodic();
         intake.periodic();
         shooter.periodic();
+        limelight.periodic();
         turret.periodic();
     }
 

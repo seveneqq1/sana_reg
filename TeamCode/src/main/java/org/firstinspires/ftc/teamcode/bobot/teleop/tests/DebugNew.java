@@ -78,6 +78,8 @@ public class DebugNew extends BekaBaseNew {
 
         min_Volts = Math.min(min_Volts, voltageSensor.getVoltage());
 
+        r.limelight.debug(telemetry);
+        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
         telemetry.addData("Pose", pose);
         telemetry.addData("Goal", correctedTarget != null ? correctedTarget : target);
         telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getActiveTargetTPS());
@@ -129,8 +131,8 @@ public class DebugNew extends BekaBaseNew {
             }
         }
 
-        boolean left = gamepad1.left_bumper;
-        boolean right = gamepad1.right_bumper;
+        boolean left = gamepad1.left_bumper || gamepad2.left_bumper;
+        boolean right = gamepad1.right_bumper || gamepad2.right_bumper;
         boolean manual = left != right;
 
         if (manual) {
@@ -138,7 +140,7 @@ public class DebugNew extends BekaBaseNew {
             r.turret.addYaw(left ? step : -step);
         } else if (tracking) {
             if (manualLastLoop) lockTargetHere(pose, headingRate);
-            r.turret.face(correctedTarget != null ? correctedTarget : target, pose, headingRate);
+            r.turret.face(correctedTarget != null ? correctedTarget : target, pose, headingRate, target);
         }
 
         manualLastLoop = manual && tracking;

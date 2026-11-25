@@ -11,7 +11,7 @@ import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 @Config
 public class Turret extends SubsystemBase {
     private static final double ANGLE_ROUNDING_TOLERANCE_DEGREES = 1e-9;
-    public static double nurikGay = 392.432;
+    public static double nurikGay = 422.5;
     private static final double FIELD_MIDPOINT = 70.5;
     private static final Pose SOUTHWEST_TARGET = new Pose(53, 58, 0);
     private static final Pose SOUTHEAST_TARGET = new Pose(85, 58, 0);
@@ -21,8 +21,8 @@ public class Turret extends SubsystemBase {
     public static double centerPosition = 0.062;
     public static double centerAngleDegrees = 180.0;
     public static double kV = 1.0 / nurikGay;
-    public static double minAngleDegrees = 5.0;
-    public static double maxAngleDegrees = 355.0;
+    public static double minAngleDegrees = -60;
+    public static double maxAngleDegrees = 600;
     public static boolean reverseServo1 = false;
     public static boolean reverseServo2 = false;
     public static double turnLeadSeconds = 0.0;
@@ -30,12 +30,22 @@ public class Turret extends SubsystemBase {
     private double targetAngleDegrees;
     private double aimTrimRadians;
     private boolean on = true;
+    private Limelight limelight;
+    private final VisionAimTrim visionTrim = new VisionAimTrim();
+    private boolean automaticAiming;
+    private double visionAimBiasDegrees;
 
     public void init(HardwareMap hw) {
+        init(hw, null);
+    }
+
+    public void init(HardwareMap hw, Limelight limelight) {
+        this.limelight = limelight;
         servo1 = new ServoEx(hw, "servo1");
         servo2 = new ServoEx(hw, "servo2");
         targetAngleDegrees = centerAngleDegrees;
         aimTrimRadians = 0;
+        clearVisionCorrection();
         servo1.setCachingTolerance(0.0001);
         servo2.setCachingTolerance(0.0001);
     }
@@ -61,15 +71,37 @@ public class Turret extends SubsystemBase {
     }
 
     public void face(Pose target, Pose robot, double headingRateRadPerSec) {
+        face(target, robot, headingRateRadPerSec, selectFieldTarget(target));
+    }
+
+    public void face(Pose target, Pose robot, double headingRateRadPerSec, Pose visionTarget) {
         double dx = target.x() - robot.x();
         double dy = target.y() - robot.y();
-        if (dx == 0 && dy == 0) return;
+        if (dx == 0 && dy == 0) {
+            clearVisionCorrection();
+            return;
+        }
 
         double predictedHeading = robot.heading() + headingRateRadPerSec * turnLeadSeconds;
-        setYaw(Math.atan2(dy, dx) - predictedHeading + aimTrimRadians);
+        double targetBearing = Math.atan2(dy, dx);
+        double visionBearing = Math.atan2(visionTarget.y() - robot.y(), visionTarget.x() - robot.x());
+        visionAimBiasDegrees = Math.toDegrees(normalizeAngle(targetBearing - visionBearing
+                + aimTrimRadians - headingRateRadPerSec * turnLeadSeconds));
+        if (limelight != null) {
+            Limelight.Cell cell = Limelight.Cell.forFieldTarget(visionTarget.x(), visionTarget.y());
+            if (cell != limelight.getTarget()) visionTrim.reset();
+            limelight.setTarget(cell);
+        }
+        automaticAiming = true;
+        setTargetYaw(targetBearing - predictedHeading + aimTrimRadians);
     }
 
     public void setYaw(double radians) {
+        clearVisionCorrection();
+        setTargetYaw(radians);
+    }
+
+    private void setTargetYaw(double radians) {
         double desired = centerAngleDegrees + Math.toDegrees(normalizeAngle(radians));
         double low = lowLimit();
         double high = highLimit();
@@ -97,11 +129,12 @@ public class Turret extends SubsystemBase {
     }
 
     public double getYaw() {
-        return Math.toRadians(targetAngleDegrees - centerAngleDegrees);
+        return Math.toRadians(targetAngleDegrees + visionTrim.getDegrees() - centerAngleDegrees);
     }
 
     public void addYaw(double radians) {
-        double angle = targetAngleDegrees + Math.toDegrees(radians);
+        double angle = targetAngleDegrees + visionTrim.getDegrees() + Math.toDegrees(radians);
+        clearVisionCorrection();
         targetAngleDegrees = Math.max(lowLimit(), Math.min(highLimit(), angle));
     }
 
@@ -111,18 +144,34 @@ public class Turret extends SubsystemBase {
 
     public void off() {
         on = false;
+        clearVisionCorrection();
     }
 
     public void nudge() {
-        aimTrimRadians += 0.3;
-        addYaw(0.3);
+        nudge(0.3);
+    }
+
+    public void nudge(double radians) {
+        aimTrimRadians += radians;
+        visionAimBiasDegrees += Math.toDegrees(radians);
+        double angle = targetAngleDegrees + Math.toDegrees(radians);
+        targetAngleDegrees = Math.max(lowLimit(), Math.min(highLimit(), angle));
     }
 
     @Override
     public void periodic() {
         if (on) {
-            double position = centerPosition + (targetAngleDegrees - centerAngleDegrees) * kV;
-            if (!(position >= 0.0 && position <= 1.0 && targetAngleDegrees >= minAngleDegrees && targetAngleDegrees <= maxAngleDegrees)) {
+            if (automaticAiming && limelight != null && limelight.hasTarget()
+                    && limelight.getTagCount() >= Math.max(1, VisionAimTrim.minimumTags)) {
+                visionTrim.update(limelight.getAngle() + visionAimBiasDegrees + VisionAimTrim.aimOffsetDegrees,
+                        limelight.getFrameTimestamp(), System.nanoTime() * 1e-9);
+                visionTrim.limitTo(lowLimit() - targetAngleDegrees, highLimit() - targetAngleDegrees);
+            } else {
+                visionTrim.reset();
+            }
+            double correctedAngle = targetAngleDegrees + visionTrim.getDegrees();
+            double position = centerPosition + (correctedAngle - centerAngleDegrees) * kV;
+            if (!(position >= 0.0 && position <= 1.0 && correctedAngle >= minAngleDegrees && correctedAngle <= maxAngleDegrees)) {
                 return;
             }
             servo1.setInverted(reverseServo1);
@@ -130,6 +179,15 @@ public class Turret extends SubsystemBase {
             servo1.set(position);
             servo2.set(position);
         }
+    }
+
+    public double getVisionTrimDegrees() {
+        return visionTrim.getDegrees();
+    }
+
+    private void clearVisionCorrection() {
+        automaticAiming = false;
+        visionTrim.reset();
     }
 
     private static double lowLimit() {

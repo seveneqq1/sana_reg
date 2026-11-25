@@ -72,6 +72,8 @@ public class trackingTeleOpDebug extends BekaBase {
 
         min_Volts = Math.min(min_Volts, voltageSensor.getVoltage());
 
+        r.limelight.debug(telemetry);
+        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
         telemetry.addData("Pose", pose);
         telemetry.addData("Goal", correctedTarget != null ? correctedTarget : target);
         telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getCommandedTarget());
@@ -124,7 +126,7 @@ public class trackingTeleOpDebug extends BekaBase {
             r.turret.addYaw(left ? step : -step);
         } else if (tracking) {
             if (manualLastLoop) lockTargetHere(pose, headingRate);
-            r.turret.face(correctedTarget != null ? correctedTarget : target, pose, headingRate);
+            r.turret.face(correctedTarget != null ? correctedTarget : target, pose, headingRate, target);
         }
         manualLastLoop = manual && tracking;
     }

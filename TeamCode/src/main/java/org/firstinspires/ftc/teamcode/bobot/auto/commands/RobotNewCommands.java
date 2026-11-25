@@ -22,8 +22,9 @@ public class RobotNewCommands {
         return robot.intake.in();
     }
 
-    public static Command nudgee(RobotNew robot){
-        return robot.turret.nudgeleft();
+    // Negative input adds yaw to the left; the trim persists while aiming.
+    public static Command nudgee(RobotNew robot, double radians) {
+        return new InstantCommand(() -> robot.turret.nudge(-radians), robot.turret);
     }
 
     public static Command closeFlower(RobotNew robot) {

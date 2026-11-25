@@ -73,7 +73,7 @@ public class test_only_path_new extends LinearOpMode {
                         new FollowPathCommand(follower, shoot1()),
                         new SequentialCommandGroup(
                                 new WaitCommand(500),
-                                nudgee(r)
+                                nudgee(r, -0.3)
                         )
                 ),
                 shoot(r),
@@ -92,7 +92,7 @@ public class test_only_path_new extends LinearOpMode {
                                 new FollowPathCommand(follower, bekamove1())
                         )
                 ),
-                nudgee(r),
+                nudgee(r, -0.3),
                 spinUp(r),
                 shoot(r),
                 closeFlower(r),
@@ -111,8 +111,8 @@ public class test_only_path_new extends LinearOpMode {
                         )
                 ),
                 setBaseVel(r, 1850),
-                nudgee(r),
-                nudgee(r),
+                nudgee(r, -0.3),
+                nudgee(r, -0.3),
                 new WaitCommand(200),
                 shoot(r),
                 RobotNewCommands.idle(r)
@@ -123,44 +123,50 @@ public class test_only_path_new extends LinearOpMode {
     public void runOpMode() {
         r = RobotNew.getInstance();
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
-        r.init(hardwareMap, start);
-        follower = r.drive.getFollower();
-        follower.update();
-
-        waitForStart();
-        if (isStopRequested()) return;
-
-        CommandScheduler scheduler = CommandScheduler.getInstance();
-        SequentialCommandGroup routine = autoRoutine();
-        scheduler.unregisterSubsystem(r.drive);
         try {
-            r.turret.on();
-            scheduler.schedule(routine);
-            while (opModeIsActive()) {
-                follower.update();
-                Pose pose = follower.pose();
-                Pose target = Turret.selectWestFieldTarget(pose);
-                r.turret.face(target, pose, follower.velocity().omega);
-                scheduler.run();
+            r.init(hardwareMap, start);
+            follower = r.drive.getFollower();
+            follower.update();
 
-                telemetry.addData("x", pose.x());
-                telemetry.addData("y", pose.y());
-                telemetry.addData("heading", pose.heading());
-                telemetry.addData("Goal", target);
-                telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
+            waitForStart();
+            if (isStopRequested()) return;
 
-                telemetry.update();
+            CommandScheduler scheduler = CommandScheduler.getInstance();
+            SequentialCommandGroup routine = autoRoutine();
+            scheduler.unregisterSubsystem(r.drive);
+            try {
+                r.turret.on();
+                scheduler.schedule(routine);
+                while (opModeIsActive()) {
+                    follower.update();
+                    Pose pose = follower.pose();
+                    Pose target = Turret.selectWestFieldTarget(pose);
+                    r.turret.face(target, pose, follower.velocity().omega);
+                    scheduler.run();
+
+                    r.limelight.debug(telemetry);
+                    telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
+                    telemetry.addData("x", pose.x());
+                    telemetry.addData("y", pose.y());
+                    telemetry.addData("heading", pose.heading());
+                    telemetry.addData("Goal", target);
+                    telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
+
+                    telemetry.update();
+                }
+            } finally {
+                r.turret.off();
+                try {
+                    scheduler.cancel(routine);
+                    follower.stop();
+                    follower.update();
+                    r.saveEnd();
+                } finally {
+                    scheduler.registerSubsystem(r.drive);
+                }
             }
         } finally {
-            r.turret.off();
-            try {
-                scheduler.cancel(routine);
-                follower.stop();
-                follower.update();
-                r.saveEnd();
-            } finally {
-                scheduler.registerSubsystem(r.drive);
-            }
+            r.limelight.stop();
         }
     }
 
