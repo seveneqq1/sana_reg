@@ -61,9 +61,8 @@ public class test_only_path_new extends LinearOpMode {
 
     private SequentialCommandGroup autoRoutine() {
         return new SequentialCommandGroup(
-                new FollowPathCommand(follower, shootPreload()),
                 spinUp(r),
-                new WaitCommand(1000),
+                new FollowPathCommand(follower, shootPreload()),
                 shoot(r),
                 new ParallelCommandGroup(
                         intake(r),
@@ -93,6 +92,7 @@ public class test_only_path_new extends LinearOpMode {
                                 new FollowPathCommand(follower, bekamove1())
                         )
                 ),
+                nudgee(r),
                 spinUp(r),
                 shoot(r),
                 closeFlower(r),
@@ -110,6 +110,9 @@ public class test_only_path_new extends LinearOpMode {
                                 closeFlower(r)
                         )
                 ),
+                setBaseVel(r, 1850),
+                nudgee(r),
+                nudgee(r),
                 new WaitCommand(200),
                 shoot(r),
                 RobotNewCommands.idle(r)
@@ -136,7 +139,7 @@ public class test_only_path_new extends LinearOpMode {
             while (opModeIsActive()) {
                 follower.update();
                 Pose pose = follower.pose();
-                Pose target = Turret.selectFieldTarget(pose);
+                Pose target = Turret.selectWestFieldTarget(pose);
                 r.turret.face(target, pose, follower.velocity().omega);
                 scheduler.run();
 

@@ -11,7 +11,7 @@ import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 @Config
 public class Turret extends SubsystemBase {
     private static final double ANGLE_ROUNDING_TOLERANCE_DEGREES = 1e-9;
-    public static double nurikGay = 422.0;
+    public static double nurikGay = 392.432;
     private static final double FIELD_MIDPOINT = 70.5;
     private static final Pose SOUTHWEST_TARGET = new Pose(53, 58, 0);
     private static final Pose SOUTHEAST_TARGET = new Pose(85, 58, 0);
@@ -21,8 +21,8 @@ public class Turret extends SubsystemBase {
     public static double centerPosition = 0.062;
     public static double centerAngleDegrees = 180.0;
     public static double kV = 1.0 / nurikGay;
-    public static double minAngleDegrees = -60.0;
-    public static double maxAngleDegrees = 600.0;
+    public static double minAngleDegrees = 5.0;
+    public static double maxAngleDegrees = 355.0;
     public static boolean reverseServo1 = false;
     public static boolean reverseServo2 = false;
     public static double turnLeadSeconds = 0.0;
@@ -42,6 +42,10 @@ public class Turret extends SubsystemBase {
 
     public static Pose selectFieldTarget(Pose pose) {
         return selectFieldTarget(pose, pose.y() >= FIELD_MIDPOINT);
+    }
+
+    public static Pose selectWestFieldTarget(Pose pose) {
+        return pose.y() >= FIELD_MIDPOINT ? NORTHWEST_TARGET : SOUTHWEST_TARGET;
     }
 
     public static Pose selectFieldTarget(Pose pose, boolean north) {
@@ -110,7 +114,6 @@ public class Turret extends SubsystemBase {
     }
 
     public void nudge() {
-        // Keep the correction when face() recalculates tracking on the next loop.
         aimTrimRadians += 0.3;
         addYaw(0.3);
     }

@@ -41,6 +41,10 @@ public class RobotNewCommands {
         }, robot.shooter);
     }
 
+    public static Command setBaseVel(RobotNew robot, double velocityTPS) {
+        return new InstantCommand(() -> RobotNew.ShooterNew.baseVel = velocityTPS, robot.shooter);
+    }
+
     public static Command idle(RobotNew robot) {
         return new InstantCommand(() -> {
             robot.intake.spinOff();
