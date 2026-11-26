@@ -101,7 +101,7 @@ public class RobotNew {
         public static double blockedPosition = 0.35, feedingPosition = 0.5;
         public static double kP = 0.072, kI = 0.0, kD = 0.001;
         public static double kS = 0.08, kV = 0.00037;
-        public static double baseVel = 1234, offsetTuner = 0;
+        public static double baseVel = 1367, offsetTuner = 0;
         public static double nominalVoltage = 12.0;
         public static double integralLimit = 1000;
 
@@ -125,6 +125,12 @@ public class RobotNew {
         private BlockStates blockState = BlockStates.BLOCK;
 
         public void init(HardwareMap hw){
+            // Reset any final-shot override left by the previous OpMode.
+            baseVel = 1367;
+            // Readiness must wait for an encoder sample from this OpMode.
+            currentVelocity = Double.NaN;
+            acceleration = 0;
+            lastVelocity = 0;
             l = new CachingDcMotorEx(hw.get(DcMotorEx.class, "shooter1"));
             r = new CachingDcMotorEx(hw.get(DcMotorEx.class, "shooter2"));
 
@@ -138,7 +144,7 @@ public class RobotNew {
             stopper = hw.get(Servo.class, "stopper");
             setFeeding(false);
 
-            lastTime = System.nanoTime();
+            lastTime = 0;
         }
 
         public void set(double p){
@@ -250,10 +256,10 @@ public class RobotNew {
         @Override
         public void periodic(){
             long currentTime = System.nanoTime();
-            double dt = (currentTime - lastTime) * 1e-9;
+            double dt = lastTime == 0 ? 0 : (currentTime - lastTime) * 1e-9;
             lastTime = currentTime;
 
-            currentVelocity = Math.abs(r.getVelocity());
+            currentVelocity = Math.abs(l.getVelocity());
 
             boolean validDt = dt > 0 && dt < 0.25;
 

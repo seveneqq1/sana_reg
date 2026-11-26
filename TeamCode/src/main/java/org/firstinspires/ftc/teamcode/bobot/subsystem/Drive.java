@@ -55,7 +55,7 @@ public class Drive extends SubsystemBase {
     }
 
     public void resetPos() {
-        setPose(new Pose(135, 9, Math.PI / 2));
+        setPose(new Pose(134.8, 8.8, Math.PI / 2));
     }
 
     private void setPose(Pose pose) {

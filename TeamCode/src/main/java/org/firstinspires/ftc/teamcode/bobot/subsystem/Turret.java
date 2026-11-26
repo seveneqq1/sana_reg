@@ -11,16 +11,15 @@ import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 @Config
 public class Turret extends SubsystemBase {
     private static final double ANGLE_ROUNDING_TOLERANCE_DEGREES = 1e-9;
-    public static double nurikGay = 422.5;
+    public static double nurikGay = 380;
     private static final double FIELD_MIDPOINT = 70.5;
-    private static final Pose SOUTHWEST_TARGET = new Pose(53, 58, 0);
-    private static final Pose SOUTHEAST_TARGET = new Pose(85, 58, 0);
-    private static final Pose NORTHWEST_TARGET = new Pose(53, 81, 0);
-    private static final Pose NORTHEAST_TARGET = new Pose(85, 81, 0);
+    private static final Pose SOUTHWEST_TARGET = new Pose(58.8, 58.8, 0);
+    private static final Pose SOUTHEAST_TARGET = new Pose(86.5, 58.8, 0);
+    private static final Pose NORTHWEST_TARGET = new Pose(58.8, 84.6, 0);
+    private static final Pose NORTHEAST_TARGET = new Pose(86.5, 84.6, 0);
 
-    public static double centerPosition = 0.062;
+    public static double centerPosition = 0.055;
     public static double centerAngleDegrees = 180.0;
-    public static double kV = 1.0 / nurikGay;
     public static double minAngleDegrees = -60;
     public static double maxAngleDegrees = 600;
     public static boolean reverseServo1 = false;
@@ -170,7 +169,7 @@ public class Turret extends SubsystemBase {
                 visionTrim.reset();
             }
             double correctedAngle = targetAngleDegrees + visionTrim.getDegrees();
-            double position = centerPosition + (correctedAngle - centerAngleDegrees) * kV;
+            double position = centerPosition + (correctedAngle - centerAngleDegrees) * getKV();
             if (!(position >= 0.0 && position <= 1.0 && correctedAngle >= minAngleDegrees && correctedAngle <= maxAngleDegrees)) {
                 return;
             }
@@ -190,14 +189,18 @@ public class Turret extends SubsystemBase {
         visionTrim.reset();
     }
 
+    private static double getKV() {
+        return 1.0 / nurikGay;
+    }
+
     private static double lowLimit() {
-        return Math.max(minAngleDegrees, centerAngleDegrees - centerPosition / kV) + 0.5;
+        return Math.max(minAngleDegrees, centerAngleDegrees - centerPosition / getKV()) + 0.5;
     }
 
     public Command nudgeleft() { return new InstantCommand(this::nudge, this); }
 
     private static double highLimit() {
-        return Math.min(maxAngleDegrees, centerAngleDegrees + (1.0 - centerPosition) / kV) - 0.5;
+        return Math.min(maxAngleDegrees, centerAngleDegrees + (1.0 - centerPosition) / getKV()) - 0.5;
     }
 
     public static double normalizeAngle(double radians) {

@@ -47,10 +47,10 @@ public class Shooter extends SubsystemBase {
         return standby ? getTarget() * STANDBY_SPEED_FRACTION : getTarget();
     }
     public double getVel(){
-        return r.getVelocity();
+        return l.getVelocity();
     }
     public double getAccel(){
-        return r.getAcceleration();
+        return l.getAcceleration();
     }
     public void turnOff(){
         pid.reset();

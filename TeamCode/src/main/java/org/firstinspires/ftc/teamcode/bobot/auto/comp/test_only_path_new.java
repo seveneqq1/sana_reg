@@ -26,7 +26,7 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 import java.nio.file.Watchable;
 
-@Autonomous(name = "test_paths_new", group = "Autonomous")
+@Autonomous(name = "test_paths_new 1 version", group = "Autonomous")
 public class test_only_path_new extends LinearOpMode {
     RobotNew r;
     private Follower follower;
@@ -34,7 +34,7 @@ public class test_only_path_new extends LinearOpMode {
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
     private final Pose start = poseFactory.of(56.1446, 7.8917, 180);
-    private final Pose shootpreload = poseFactory.of(56.1446, 20, 180);
+    private final Pose shootpreload = poseFactory.of(56.1446, 24, 180);
     private final Pose togarden = poseFactory.of(7.7392, 8.46, -90.9051);
     private final Pose togardenControl1 = poseFactory.of(8.4538, 53.6931, 0);
     private final Pose togardenSegment1Start = poseFactory.of(7.7392, 8.46, 0);
@@ -92,7 +92,7 @@ public class test_only_path_new extends LinearOpMode {
                                 new FollowPathCommand(follower, bekamove1())
                         )
                 ),
-                nudgee(r, -0.3),
+                nudgee(r, 0.08),
                 spinUp(r),
                 shoot(r),
                 closeFlower(r),
@@ -111,8 +111,8 @@ public class test_only_path_new extends LinearOpMode {
                         )
                 ),
                 setBaseVel(r, 1850),
-                nudgee(r, -0.3),
-                nudgee(r, -0.3),
+                nudgee(r, 0.3),
+                nudgee(r, 0.3),
                 new WaitCommand(200),
                 shoot(r),
                 RobotNewCommands.idle(r)

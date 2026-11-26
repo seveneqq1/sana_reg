@@ -3,10 +3,12 @@ package org.firstinspires.ftc.teamcode.bobot.teleop.tests;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Servo;
 
+@Disabled
 @Config
 @TeleOp(name = "Turret position tuner", group = "test")
 public class TurretPositionTuner extends OpMode {

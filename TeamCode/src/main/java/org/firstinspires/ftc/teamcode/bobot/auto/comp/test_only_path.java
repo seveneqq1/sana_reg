@@ -10,6 +10,7 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.math.Pose;
 import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
 import com.seattlesolvers.solverslib.command.ParallelCommandGroup;
@@ -21,6 +22,7 @@ import org.firstinspires.ftc.teamcode.bobot.Robot;
 import org.firstinspires.ftc.teamcode.bobot.auto.commands.RobotCommands;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
 
+@Disabled
 @Autonomous(name = "test_paths", group = "Autonomous")
 public class test_only_path extends LinearOpMode {
     Robot r;
