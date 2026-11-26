@@ -181,7 +181,7 @@ public class test_only_path_new extends LinearOpMode {
         return Paths.line(flowermovearound2, flowermovearound1).linear(flowermovearound2, flowermovearound1);
     }
     public Path togarden() {
-        return Paths.curve(shootpreload, togardenControl1, togarden).heading(Interpolator.piecewise().until(0.3899, Interpolator.linear(togardenSegment1Start, togardenSegment1End)).until(1, Interpolator.tangent))/*.with(Constants.foresightConfig.maxPathSpeed.at(0.35))*/;
+        return Paths.curve(shootpreload, togardenControl1, togarden).heading(Interpolator.piecewise().until(0.3899, Interpolator.linear(togardenSegment1Start, togardenSegment1End)).until(1, Interpolator.tangent)) ;
     }
 
     public Path shoot1() {

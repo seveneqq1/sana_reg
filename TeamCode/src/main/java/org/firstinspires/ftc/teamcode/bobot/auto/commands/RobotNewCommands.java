@@ -22,7 +22,6 @@ public class RobotNewCommands {
         return robot.intake.in();
     }
 
-    // Negative input adds yaw to the left; the trim persists while aiming.
     public static Command nudgee(RobotNew robot, double radians) {
         return new InstantCommand(() -> robot.turret.nudge(-radians), robot.turret);
     }
@@ -57,7 +56,6 @@ public class RobotNewCommands {
         return shoot(robot, shootTimeMs);
     }
 
-    // Duration includes the stopper delay, matching DebugNew's shootTime.
     public static Command shoot(RobotNew robot, double shootMs) {
         return new CommandBase() {
             private final ElapsedTime timer = new ElapsedTime();

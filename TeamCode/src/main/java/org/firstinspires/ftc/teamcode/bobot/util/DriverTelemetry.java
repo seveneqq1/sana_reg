@@ -66,7 +66,7 @@ public class DriverTelemetry {
     public void update() {
         ds.update();
         dashboard.sendTelemetryPacket(packet);
-        packet = new TelemetryPacket(); // Reset packet for the next loop
+        packet = new TelemetryPacket();
     }
     public TelemetryPacket getPacket() {
         return packet;

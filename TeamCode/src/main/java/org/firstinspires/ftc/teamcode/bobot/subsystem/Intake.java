@@ -56,6 +56,10 @@ public class Intake extends SubsystemBase {
         setPower(1.0, 1.0);
     }
 
+    public double getTransferCurrentMilliamps() {
+        return transfer.getCurrent(CurrentUnit.MILLIAMPS);
+    }
+
     public void spinOut() {
         setPower(-0.8, -0.8, true);
     }

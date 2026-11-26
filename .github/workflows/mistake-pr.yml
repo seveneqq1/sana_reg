@@ -20,12 +20,10 @@ jobs:
             const pr = context.payload.pull_request;
             const labels = pr.labels.map(l => l.name);
 
-            // Skip if auto-reopen is disabled or already used
             if (labels.includes('reopen-used') || labels.includes('reopen-locked')) {
               return;
             }
 
-            // Get changed files
             const files = await github.paginate(
               github.rest.pulls.listFiles,
               {
@@ -35,14 +33,12 @@ jobs:
               }
             );
 
-            // Detect newly added OR copied files
             const hasNewFiles = files.some(
               f => f.status === 'added' || f.status === 'copied'
             );
 
             if (!hasNewFiles) return;
 
-            // Label as mistake PR
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -50,7 +46,6 @@ jobs:
               labels: ['mistake-pr']
             });
 
-            // Explain and close
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

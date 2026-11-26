@@ -85,10 +85,50 @@ it requires reinitializing the OpMode. Target changes invalidate old measurement
 Tipped detection now counts distinct images, rather than repeated polling of
 the same image. The flag still latches until reset, as in MLP.
 
-MLP's `cameraHeight=12`, `cameraPitch=0`, and `splitHeight=40` remain placeholders
-for height/tipped detection. Calibrate them for this robot; they do not enter
-the horizontal correction math. Camera-relative correction is `-tx` in degrees;
-Turret converts it to the existing CCW-positive yaw convention.
+The confirmed physical mounting is 180 degrees roll and exactly 45 degrees
+upward pitch, rotating with the turret. `Limelight.cameraPitch` defaults to 45
+degrees and currently affects only height/tipped detection. `cameraHeight=10.986`
+inches above the floor is user-reported, interpreted as the camera lens-center
+height. `splitHeight=40` remains a legacy placeholder. These settings do not
+enter the horizontal correction math.
+Camera-relative correction is still `-tx` in degrees; physical roll/pitch
+compensation and verification of angle signs after image orientation are pending.
+
+### Mounting offsets in Dashboard
+
+The following settings are exposed under `Limelight`. The user-reported camera
+forward offset from the turret pivot is 5.101 inches. The corrected camera height
+is 10.986 inches above the floor. The user clarified the turret pivot is 188 mm
+above the floor (178 mm above the robot bottom), replacing the earlier 188.99 mm
+report. With floor Z=0, `turretUpOffsetInches=188.0/25.4` (about 7.401574803
+inches) and `cameraUpOffsetInches=3.584425197` (camera above the pivot). The camera
+is confirmed directly in front of the pivot (`cameraLeftOffsetInches=0`),
+and camera/shooter headings are aligned with turret forward (both yaw offsets
+zero). The user now confirms the turret pivot is directly above the midpoint of
+the four mecanum wheel centers, replacing the earlier report that it was behind
+the robot origin. `turretForwardOffsetInches=0` and `turretLeftOffsetInches=0`
+therefore assume this wheel-layout center is the localization reference. The user
+believes the odometry pod offsets use that center; this reference has not been
+physically verified. Shooter positional offsets remain unmeasured zero
+placeholders. These new fields are stored
+calibration settings only: they are not yet applied to aiming, distance estimates
+or localization.
+
+| Settings | Reference frame / units |
+| --- | --- |
+| `turretForwardOffsetInches`, `turretLeftOffsetInches`, `turretUpOffsetInches` | Robot pose origin to turret pivot; chassis forward/left/up, inches |
+| `cameraForwardOffsetInches`, `cameraLeftOffsetInches`, `cameraUpOffsetInches` | Turret pivot to camera optical center; turret forward/left/up, inches |
+| `shooterForwardOffsetInches`, `shooterLeftOffsetInches`, `shooterUpOffsetInches` | Turret pivot to a chosen point on the firing axis (for example, muzzle center); turret forward/left/up, inches |
+| `cameraRollDegrees` | Physical optical-axis roll; defaults to 180 degrees |
+| `cameraYawOffsetDegrees` | Camera heading relative to turret forward; positive CCW, defaults to 0 degrees |
+| `shooterYawOffsetDegrees` | Firing-axis heading relative to turret forward; positive CCW, defaults to 0 degrees |
+
+Turret forward means the turret's zero-yaw direction, rotating with the assembly;
+turret left is 90 degrees CCW from that direction. Chassis forward/left are fixed
+to the robot. Camera up offset is relative to the pivot, whereas `cameraHeight`
+is absolute height above the floor. Physical roll describes the mount and must
+not be reapplied blindly after a pipeline image rotation. Dashboard edits are
+runtime settings; save measured values in source when calibration is complete.
 
 ## Verification and robot check
 

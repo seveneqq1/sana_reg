@@ -13,7 +13,24 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 @Config
 public class Limelight extends SubsystemBase {
-    public static double cameraHeight = 12, cameraPitch = 0, splitHeight = 40;
+    public static double cameraHeight = 10.986, cameraPitch = 45, splitHeight = 40;
+
+    public static double turretForwardOffsetInches = 0;
+    public static double turretLeftOffsetInches = 0;
+    public static double turretUpOffsetInches = 188.0 / 25.4;
+
+    public static double cameraForwardOffsetInches = 5.101;
+    public static double cameraLeftOffsetInches = 0;
+    public static double cameraUpOffsetInches = 3.584425197;
+
+    public static double shooterForwardOffsetInches = 0;
+    public static double shooterLeftOffsetInches = 0;
+    public static double shooterUpOffsetInches = 0;
+
+    public static double cameraRollDegrees = 180;
+    public static double cameraYawOffsetDegrees = 0;
+    public static double shooterYawOffsetDegrees = 0;
+
     public static int confirmLoops = 3;
     public static int pipeline = 0;
     public static double maximumFrameAgeMs = 100;

@@ -1,5 +1,6 @@
-
 package org.firstinspires.ftc.teamcode.bobot.teleop.tests;
+
+import static org.firstinspires.ftc.teamcode.bobot.util.RegShooter.*;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
@@ -12,6 +13,7 @@ import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.bobot.teleop.BekaBaseNew;
+import org.firstinspires.ftc.teamcode.bobot.util.RegShooter;
 
 @Config
 @TeleOp(name = "Alimzhan debug")
@@ -65,6 +67,13 @@ public class DebugNew extends BekaBaseNew {
             correctedTarget = null;
         }
 
+        if(first_driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > 0.1) {
+            org.firstinspires.ftc.teamcode.bobot.RobotNew.ShooterNew.baseVel = velForDist(pose.distance(fieldTarget));
+            if (mode != Mode.SHOOT) setMode(Mode.SHOOT);
+        } else {
+            org.firstinspires.ftc.teamcode.bobot.RobotNew.ShooterNew.baseVel = 1367;
+        }
+
         double headingRate = deltaTime > 0
                 ? Turret.normalizeAngle(pose.heading() - previousHeading) / deltaTime : 0;
 
@@ -76,6 +85,13 @@ public class DebugNew extends BekaBaseNew {
         updateIntake(velocity);
         updateDrive();
 
+        if (r.intake.getTransferCurrentMilliamps() > 4000.0) {
+
+            gamepad1.rumble(1.0, 1.0, 100);
+        } else {
+            gamepad1.stopRumble();
+        }
+
         min_Volts = Math.min(min_Volts, voltageSensor.getVoltage());
 
         r.limelight.debug(telemetry);
@@ -83,12 +99,17 @@ public class DebugNew extends BekaBaseNew {
         telemetry.addData("Pose", pose);
         telemetry.addData("Goal", correctedTarget != null ? correctedTarget : target);
         telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getActiveTargetTPS());
+        telemetry.addData("Shooter encoder", r.shooter.encoderFeedback.getSourceName());
+        telemetry.addData("Shooter encoder fault", r.shooter.encoderFeedback.hasFault());
+        telemetry.addData("Shooter raw TPS (left / right)", "%.0f / %.0f",
+                r.shooter.encoderFeedback.getLeftTPS(), r.shooter.encoderFeedback.getRightTPS());
         telemetry.addData("Shooter Ready", isShooterReady(velocity, shooterTolerance));
         telemetry.addData("Voltage", voltageSensor.getVoltage());
         telemetry.addData("Minimum Voltage", min_Volts);
         telemetry.addData("dt", deltaTime);
         telemetry.addData("freq", deltaTime > 0 ? 1 / deltaTime : 0);
         telemetry.addData("shooter motor power", r.shooter.l.getPower());
+        telemetry.addData("dist to hive", pose.distance(fieldTarget));
         telemetry.update();
     }
 
