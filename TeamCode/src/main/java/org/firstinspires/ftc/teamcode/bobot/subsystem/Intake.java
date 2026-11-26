@@ -14,6 +14,8 @@ public class Intake extends SubsystemBase {
     private MotorEx transfer;
     private boolean transferCutoff;
     private boolean outtaking;
+    private boolean transferCurrentSampled;
+    private double transferCurrentMilliamps;
     public static double intakeShoot = 0.36, transShoot = 0.88;
     public static double transferCurrentLimitMilliamps = 6500.0;
 
@@ -28,6 +30,7 @@ public class Intake extends SubsystemBase {
         transfer.stopMotor();
         transferCutoff = false;
         outtaking = false;
+        transferCurrentSampled = false;
         intake.setCachingTolerance(0.05);
         transfer.setCachingTolerance(0.05);
     }
@@ -46,10 +49,12 @@ public class Intake extends SubsystemBase {
     @Override
     public void periodic() {
         if (!outtaking && transfer != null && transfer.get() != 0.0
-                && transfer.getCurrent(CurrentUnit.MILLIAMPS) > transferCurrentLimitMilliamps) {
+                && getTransferCurrentMilliamps() > transferCurrentLimitMilliamps) {
             transferCutoff = true;
             transfer.set(0.0);
         }
+        // TeleOp reads before periodic(); share that sample, then expire it for the next loop.
+        transferCurrentSampled = false;
     }
 
     public void spinIn() {
@@ -57,7 +62,11 @@ public class Intake extends SubsystemBase {
     }
 
     public double getTransferCurrentMilliamps() {
-        return transfer.getCurrent(CurrentUnit.MILLIAMPS);
+        if (!transferCurrentSampled) {
+            transferCurrentMilliamps = transfer.getCurrent(CurrentUnit.MILLIAMPS);
+            transferCurrentSampled = true;
+        }
+        return transferCurrentMilliamps;
     }
 
     public void spinOut() {

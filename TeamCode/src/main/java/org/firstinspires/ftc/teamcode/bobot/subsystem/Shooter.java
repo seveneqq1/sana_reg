@@ -14,8 +14,6 @@ public class Shooter extends SubsystemBase {
 
     public Shooter(){}
     public MotorEx l, r;
-    public final ShooterEncoderFeedback encoderFeedback = new ShooterEncoderFeedback();
-    private double commandedPower;
     private Servo stopper;
     private final PIDController pid = new PIDController(kP, kI, kD);
     private double previousTarget;
@@ -34,10 +32,8 @@ public class Shooter extends SubsystemBase {
         setFeeding(false);
         l.setCachingTolerance(0.003);
         r.setCachingTolerance(0.003);
-        encoderFeedback.reset();
     }
     public void set(double p){
-        commandedPower = p;
         l.set(p);
         r.set(p);
     }
@@ -51,10 +47,10 @@ public class Shooter extends SubsystemBase {
         return standby ? getTarget() * STANDBY_SPEED_FRACTION : getTarget();
     }
     public double getVel(){
-        return encoderFeedback.getVelocity();
+        return l.getVelocity();
     }
     public double getAccel(){
-        return encoderFeedback.getAcceleration();
+        return l.getAcceleration();
     }
     public void turnOff(){
         pid.reset();
@@ -62,11 +58,9 @@ public class Shooter extends SubsystemBase {
         setFeeding(false);
         standby = false;
         on = false;
-        encoderFeedback.reset();
     }
 
     public void setFeeding(boolean feeding) {
-        feeding = feeding && !encoderFeedback.hasFault();
         stopper.setPosition(feeding ? feedingPosition : blockedPosition);
     }
     public void turnOn(){
@@ -78,16 +72,12 @@ public class Shooter extends SubsystemBase {
 
     @Override
     public void periodic() {
-        double target = getCommandedTarget();
-        boolean wasUsingLeft = encoderFeedback.isUsingLeft();
-        double velocity = encoderFeedback.update(l.getVelocity(), r.getVelocity(),
-                on ? target : 0, commandedPower, System.nanoTime() * 1e-9);
-        if (wasUsingLeft != encoderFeedback.isUsingLeft()) pid.reset();
         if (on) {
+            double target = getCommandedTarget();
+            double velocity = Math.abs(getVel());
             if (!Double.isFinite(target) || target <= 0 || !Double.isFinite(velocity)) {
                 pid.reset();
                 set(0);
-                if (encoderFeedback.hasFault()) setFeeding(false);
                 return;
             }
             if (target != previousTarget) {

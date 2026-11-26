@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.bobot.teleop.tests;
 
-import static org.firstinspires.ftc.teamcode.bobot.util.RegShooter.*;
-
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
@@ -12,8 +10,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
+import org.firstinspires.ftc.teamcode.bobot.subsystem.Rgb;
 import org.firstinspires.ftc.teamcode.bobot.teleop.BekaBaseNew;
-import org.firstinspires.ftc.teamcode.bobot.util.RegShooter;
 
 @Config
 @TeleOp(name = "Alimzhan debug")
@@ -21,6 +19,7 @@ public class DebugNew extends BekaBaseNew {
 
     public static double targetX = 50, targetY = 50;
     VoltageSensor voltageSensor;
+    private long lastTelemetryNanos;
     public static double slowMultiplier = 0.6;
     public static double manualTurretDegreesPerSecond = 120;
     public static double shooterTolerance = 120;
@@ -30,6 +29,7 @@ public class DebugNew extends BekaBaseNew {
 
     private enum Mode { IDLE, INTAKE, OUTTAKE, SHOOT }
 
+    private final Rgb rgb = new Rgb();
     private final ElapsedTime feedTimer = new ElapsedTime();
     private Mode mode = Mode.IDLE;
     private Pose target;
@@ -40,16 +40,22 @@ public class DebugNew extends BekaBaseNew {
     private boolean compensationTriggered = false;
     private double previousHeading;
     private double min_Volts = 100;
+    private boolean transferOverloaded;
+    private long lastRumbleNanos;
 
     @Override
     protected void onStart() {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+        rgb.init(hardwareMap);
+        transferOverloaded = false;
+        lastRumbleNanos = 0;
         r.turnOn();
         r.shooter.turnOn();
         r.shooter.setStandby(false);
         r.shooter.setFeeding(false);
         initializeTracking();
         voltageSensor = hardwareMap.get(VoltageSensor.class, "Control Hub");
+        lastTelemetryNanos = System.nanoTime() - 100_000_000L;
     }
 
     @Override
@@ -67,13 +73,6 @@ public class DebugNew extends BekaBaseNew {
             correctedTarget = null;
         }
 
-        if(first_driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > 0.1) {
-            org.firstinspires.ftc.teamcode.bobot.RobotNew.ShooterNew.baseVel = velForDist(pose.distance(fieldTarget));
-            if (mode != Mode.SHOOT) setMode(Mode.SHOOT);
-        } else {
-            org.firstinspires.ftc.teamcode.bobot.RobotNew.ShooterNew.baseVel = 1367;
-        }
-
         double headingRate = deltaTime > 0
                 ? Turret.normalizeAngle(pose.heading() - previousHeading) / deltaTime : 0;
 
@@ -83,34 +82,41 @@ public class DebugNew extends BekaBaseNew {
         double velocity = Math.abs(r.shooter.getVel());
 
         updateIntake(velocity);
+        rgb.periodic();
         updateDrive();
 
-        if (r.intake.getTransferCurrentMilliamps() > 4000.0) {
-
-            gamepad1.rumble(1.0, 1.0, 100);
-        } else {
+        boolean overloaded = r.intake.getTransferCurrentMilliamps() > 4000.0;
+        long rumbleNow = System.nanoTime();
+        if (overloaded) {
+            if (!transferOverloaded || rumbleNow - lastRumbleNanos >= 100_000_000L) {
+                gamepad1.rumble(1.0, 1.0, 150);
+                lastRumbleNanos = rumbleNow;
+            }
+        } else if (transferOverloaded) {
             gamepad1.stopRumble();
         }
+        transferOverloaded = overloaded;
 
-        min_Volts = Math.min(min_Volts, voltageSensor.getVoltage());
+        long now = System.nanoTime();
+        if (now - lastTelemetryNanos >= 100_000_000L) {
+            lastTelemetryNanos = now;
+            double voltage = voltageSensor.getVoltage();
+            min_Volts = Math.min(min_Volts, voltage);
 
-        r.limelight.debug(telemetry);
-        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
-        telemetry.addData("Pose", pose);
-        telemetry.addData("Goal", correctedTarget != null ? correctedTarget : target);
-        telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getActiveTargetTPS());
-        telemetry.addData("Shooter encoder", r.shooter.encoderFeedback.getSourceName());
-        telemetry.addData("Shooter encoder fault", r.shooter.encoderFeedback.hasFault());
-        telemetry.addData("Shooter raw TPS (left / right)", "%.0f / %.0f",
-                r.shooter.encoderFeedback.getLeftTPS(), r.shooter.encoderFeedback.getRightTPS());
-        telemetry.addData("Shooter Ready", isShooterReady(velocity, shooterTolerance));
-        telemetry.addData("Voltage", voltageSensor.getVoltage());
-        telemetry.addData("Minimum Voltage", min_Volts);
-        telemetry.addData("dt", deltaTime);
-        telemetry.addData("freq", deltaTime > 0 ? 1 / deltaTime : 0);
-        telemetry.addData("shooter motor power", r.shooter.l.getPower());
-        telemetry.addData("dist to hive", pose.distance(fieldTarget));
-        telemetry.update();
+            r.limelight.debug(telemetry);
+            telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
+            telemetry.addData("Pose", pose);
+            telemetry.addData("Goal", correctedTarget != null ? correctedTarget : target);
+            telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getActiveTargetTPS());
+            telemetry.addData("Shooter Ready", isShooterReady(velocity, shooterTolerance));
+            telemetry.addData("Voltage", voltage);
+            telemetry.addData("Minimum Voltage", min_Volts);
+            telemetry.addData("dt", deltaTime);
+            telemetry.addData("freq", deltaTime > 0 ? 1 / deltaTime : 0);
+            telemetry.addData("shooter motor power", r.shooter.l.getPower());
+            telemetry.addData("dist to hive", pose.distance(fieldTarget));
+            telemetry.update();
+        }
     }
 
     protected Pose selectFieldTarget(Pose pose) {
@@ -222,6 +228,11 @@ public class DebugNew extends BekaBaseNew {
     }
 
     private void setMode(Mode next) {
+        switch (next) {
+            case INTAKE: rgb.intake(); break;
+            case SHOOT: rgb.shoot(); break;
+            default: rgb.idle();
+        }
         mode = next;
         feeding = false;
         compensationTriggered = false;

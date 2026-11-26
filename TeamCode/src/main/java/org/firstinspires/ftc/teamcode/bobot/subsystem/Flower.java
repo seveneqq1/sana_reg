@@ -10,7 +10,7 @@ public class Flower extends SubsystemBase {
     private Servo flower;
     private boolean beka = false;
     public static double closeee = 0.26;
-    public static double OPEN_POS = 1, CLOSE_POS = closeee;
+    public static double OPEN_POS = 0.94, CLOSE_POS = closeee;
     public void init(HardwareMap hw){
         flower = hw.get(Servo.class, "flower");
         closeFlower();

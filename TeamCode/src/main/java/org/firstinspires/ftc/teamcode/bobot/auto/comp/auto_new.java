@@ -30,28 +30,28 @@ public class auto_new extends LinearOpMode {
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
     private final Pose start = poseFactory.of(55.5, 7.8, 180);
-    private final Pose shootpreload = poseFactory.of(55.5, 22.5, 180);
-    private final Pose shootpreloadgarden = poseFactory.of(7.5, 8, 270);
+    private final Pose shootpreload = poseFactory.of(55.5, 18, 180);
+    private final Pose shootpreloadgarden = poseFactory.of(8.5, 8.5, 270);
     private final Pose shootpreloadgardenControl1 = poseFactory.of(36, 48, 0);
     private final Pose shootpreloadgardenControl2 = poseFactory.of(8, 32, 0);
     private final Pose shootpreloadgardenControl3 = poseFactory.of(16, 16, 0);
     private final Pose shootgardenStart = poseFactory.of(7.5, 8, 270);
-    private final Pose shootgarden = poseFactory.of(46.5, 121.5, 90);
+    private final Pose shootgarden = poseFactory.of(47.5, 121.5, 90);
     private final Pose shootgardenControl1 = poseFactory.of(28, 18, 0);
     private final Pose shootgardenControl2 = poseFactory.of(16, 122, 0);
-    private final Pose takeflower1Start = poseFactory.of(46.5, 121.5, 90);
-    private final Pose takeflower1 = poseFactory.of(46.5, 128, 90);
-    private final Pose back1shoot = poseFactory.of(46.5, 112, 90);
-    private final Pose goflower2Start = poseFactory.of(46.5, 112, 90);
-    private final Pose goflower2 = poseFactory.of(16.5, 46.5, 180);
+    private final Pose takeflower1Start = poseFactory.of(47.5, 121.5, 90);
+    private final Pose takeflower1 = poseFactory.of(47.5, 129, 90);
+    private final Pose back1shoot = poseFactory.of(47.5, 117.5, 90);
+    private final Pose goflower2Start = poseFactory.of(47.5, 115, 90);
+    private final Pose goflower2 = poseFactory.of(19.5, 46.5, 180);
     private final Pose goflower2Control1 = poseFactory.of(23, 106, 0);
     private final Pose goflower2Control2 = poseFactory.of(27.5, 43, 0);
-    private final Pose flowertake2 = poseFactory.of(13.5, 46.5, 180);
-    private final Pose shootflower2Start = poseFactory.of(13.5, 46.5, 180);
+    private final Pose flowertake2 = poseFactory.of(13.5, 47.5, 180);
+    private final Pose shootflower2Start = poseFactory.of(14.5, 47.5, 180);
     private final Pose shootflower2 = poseFactory.of(57.5, 21.5, 70);
     private final Pose park = poseFactory.of(8.5, 122.5, 0);
     private final Pose parkControl1 = poseFactory.of(70.5, 132.5, 0);
-    private final Pose parkControl2 = poseFactory.of(46.5, 140, 0);
+    private final Pose parkControl2 = poseFactory.of(47.5, 140, 0);
     private final Pose parkControl3 = poseFactory.of(40, 101, 0);
     private final Pose parkSegment1Heading = poseFactory.of(8.5, 122.5, 70);
     private final Pose parkSegment2Start = poseFactory.of(8.5, 122.5, 70);
@@ -69,22 +69,26 @@ public class auto_new extends LinearOpMode {
                         intake(r),
                         spinUp(r)
                 ),
+                new WaitCommand(450),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootgarden()),
                         new SequentialCommandGroup(
-                                new WaitCommand(1000),
-                                shoot(r)
+                                new WaitCommand(3200),
+                                new ParallelCommandGroup(
+                                        intakeFlower(r),
+                                        shoot(r)
+                                )
                         )
                 ),
                 new ParallelCommandGroup(
-                        intakeFlower(r),
                         intake(r),
                         new SequentialCommandGroup(
-                                new WaitCommand(600),
+                                new WaitCommand(200),
                                 new FollowPathCommand(follower, takeflower1())
                         ),
                         spinUp(r)
                 ),
+                new WaitCommand(1000),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, back1shoot()),
                         new SequentialCommandGroup(
@@ -92,7 +96,6 @@ public class auto_new extends LinearOpMode {
                                 shoot(r)
                         )
                 ),
-                closeFlower(r),
                 new WaitCommand(400),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, goflower2()),
@@ -101,21 +104,22 @@ public class auto_new extends LinearOpMode {
                                 intake(r)
                         )
                 ),
-                intakeFlower(r),
                 new WaitCommand(600),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, flowertake2()),
                         intake(r)
                 ),
+                new WaitCommand(800),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootflower2()),
                         new SequentialCommandGroup(
                                 new WaitCommand(500),
                                 closeFlower(r)
                         ),
+                        nudgee(r, 0.5),
                         new SequentialCommandGroup(
                                 spinUp(r),
-                                new WaitCommand(500),
+                                new WaitCommand(1200),
                                 shoot(r)
                         )
                 ),
@@ -142,6 +146,7 @@ public class auto_new extends LinearOpMode {
             try {
                 r.turret.on();
                 scheduler.schedule(routine);
+                long lastTelemetryNanos = System.nanoTime() - 100_000_000L;
                 while (opModeIsActive()) {
                     follower.update();
                     Pose pose = follower.pose();
@@ -149,15 +154,19 @@ public class auto_new extends LinearOpMode {
                     r.turret.face(target, pose, follower.velocity().omega);
                     scheduler.run();
 
-                    r.limelight.debug(telemetry);
-                    telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
-                    telemetry.addData("x", pose.x());
-                    telemetry.addData("y", pose.y());
-                    telemetry.addData("heading", pose.heading());
-                    telemetry.addData("Goal", target);
-                    telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
+                    long now = System.nanoTime();
+                    if (now - lastTelemetryNanos >= 100_000_000L) {
+                        lastTelemetryNanos = now;
+                        r.limelight.debug(telemetry);
+                        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
+                        telemetry.addData("x", pose.x());
+                        telemetry.addData("y", pose.y());
+                        telemetry.addData("heading", pose.heading());
+                        telemetry.addData("Goal", target);
+                        telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
 
-                    telemetry.update();
+                        telemetry.update();
+                    }
                 }
             } finally {
                 r.turret.off();

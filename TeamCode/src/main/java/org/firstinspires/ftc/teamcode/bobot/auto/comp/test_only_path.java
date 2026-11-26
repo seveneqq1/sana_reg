@@ -96,6 +96,7 @@ public class test_only_path extends LinearOpMode {
             try {
                 r.turret.on();
                 scheduler.schedule(routine);
+                long lastTelemetryNanos = System.nanoTime() - 100_000_000L;
                 while (opModeIsActive()) {
                     follower.update();
                     Pose pose = follower.pose();
@@ -103,15 +104,19 @@ public class test_only_path extends LinearOpMode {
                     r.turret.face(target, pose, follower.velocity().omega);
                     scheduler.run();
 
-                    r.limelight.debug(telemetry);
-                    telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
-                    telemetry.addData("x", pose.x());
-                    telemetry.addData("y", pose.y());
-                    telemetry.addData("heading", pose.heading());
-                    telemetry.addData("Goal", target);
-                    telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
+                    long now = System.nanoTime();
+                    if (now - lastTelemetryNanos >= 100_000_000L) {
+                        lastTelemetryNanos = now;
+                        r.limelight.debug(telemetry);
+                        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
+                        telemetry.addData("x", pose.x());
+                        telemetry.addData("y", pose.y());
+                        telemetry.addData("heading", pose.heading());
+                        telemetry.addData("Goal", target);
+                        telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
 
-                    telemetry.update();
+                        telemetry.update();
+                    }
                 }
             } finally {
                 r.turret.off();

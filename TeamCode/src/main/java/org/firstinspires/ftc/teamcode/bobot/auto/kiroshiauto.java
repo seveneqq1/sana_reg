@@ -77,6 +77,7 @@ public class kiroshiauto extends LinearOpMode {
             try {
                 r.turret.on();
                 scheduler.schedule(routine);
+                long lastTelemetryNanos = System.nanoTime() - 100_000_000L;
                 while (opModeIsActive()) {
                     follower.update();
                     Pose pose = follower.pose();
@@ -84,20 +85,24 @@ public class kiroshiauto extends LinearOpMode {
                     r.turret.face(target, pose, follower.velocity().omega);
                     scheduler.run();
 
-                    r.limelight.debug(telemetry);
-                    telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
-                    telemetry.addData("x", pose.x());
-                    telemetry.addData("y", pose.y());
-                    telemetry.addData("heading", pose.heading());
-                    telemetry.addData("Goal", target);
-                    telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
+                    long now = System.nanoTime();
+                    if (now - lastTelemetryNanos >= 100_000_000L) {
+                        lastTelemetryNanos = now;
+                        r.limelight.debug(telemetry);
+                        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
+                        telemetry.addData("x", pose.x());
+                        telemetry.addData("y", pose.y());
+                        telemetry.addData("heading", pose.heading());
+                        telemetry.addData("Goal", target);
+                        telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
 
-                    if (follower.currentPath() != null) {
-                        telemetry.addData("Current path distance remaining", follower.distanceToEndpoint());
-                        telemetry.addData("Path number", follower.pathIndex());
+                        if (follower.currentPath() != null) {
+                            telemetry.addData("Current path distance remaining", follower.distanceToEndpoint());
+                            telemetry.addData("Path number", follower.pathIndex());
+                        }
+
+                        telemetry.update();
                     }
-
-                    telemetry.update();
                 }
             } finally {
                 r.turret.off();

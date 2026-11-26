@@ -19,6 +19,7 @@ import org.firstinspires.ftc.teamcode.bobot.teleop.BekaBase;
 public class trackingTeleOp extends BekaBase {
     public static double targetX = 50, targetY = 50;
     VoltageSensor voltageSensor;
+    private long lastTelemetryNanos;
     public static double slowMultiplier = 0.6;
     public static double manualTurretDegreesPerSecond = 120;
     public static double shooterTolerance = 120;
@@ -43,6 +44,7 @@ public class trackingTeleOp extends BekaBase {
         r.turnOn();
         initializeTracking();
         voltageSensor = hardwareMap.get(VoltageSensor.class, "Control Hub");
+        lastTelemetryNanos = System.nanoTime() - 100_000_000L;
     }
     @Override
     protected void onUpdate() {
@@ -64,15 +66,21 @@ public class trackingTeleOp extends BekaBase {
         updateIntake(velocity);
         updateDrive();
 
-        r.limelight.debug(telemetry);
-        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
-        telemetry.addData("Pose", pose);
-        telemetry.addData("Goal", correctedTarget != null ? correctedTarget : target);
-        telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getCommandedTarget());
-        telemetry.addData("Voltage", voltageSensor.getVoltage());
-        telemetry.addData("dt", deltaTime);
-        telemetry.addData("freq", 1 / deltaTime);
-        telemetry.update();
+        long now = System.nanoTime();
+        if (now - lastTelemetryNanos >= 100_000_000L) {
+            lastTelemetryNanos = now;
+            double voltage = voltageSensor.getVoltage();
+
+            r.limelight.debug(telemetry);
+            telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
+            telemetry.addData("Pose", pose);
+            telemetry.addData("Goal", correctedTarget != null ? correctedTarget : target);
+            telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getCommandedTarget());
+            telemetry.addData("Voltage", voltage);
+            telemetry.addData("dt", deltaTime);
+            telemetry.addData("freq", 1 / deltaTime);
+            telemetry.update();
+        }
     }
 
     protected Pose selectFieldTarget(Pose pose) {

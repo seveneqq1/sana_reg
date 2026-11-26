@@ -58,15 +58,20 @@ public class test_ignore extends LinearOpMode {
         SequentialCommandGroup routine = autoRoutine();
         try {
             scheduler.schedule(routine);
+            long lastTelemetryNanos = System.nanoTime() - 100_000_000L;
             while (opModeIsActive()) {
                 follower.update();
                 scheduler.run();
 
-                telemetry.addData("x", follower.pose().x());
-                telemetry.addData("y", follower.pose().y());
-                telemetry.addData("heading", follower.pose().heading());
+                long now = System.nanoTime();
+                if (now - lastTelemetryNanos >= 100_000_000L) {
+                    lastTelemetryNanos = now;
+                    telemetry.addData("x", follower.pose().x());
+                    telemetry.addData("y", follower.pose().y());
+                    telemetry.addData("heading", follower.pose().heading());
 
-                telemetry.update();
+                    telemetry.update();
+                }
             }
         } finally {
             scheduler.cancel(routine);
