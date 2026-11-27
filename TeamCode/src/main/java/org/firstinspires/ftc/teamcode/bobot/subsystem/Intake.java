@@ -15,6 +15,7 @@ public class Intake extends SubsystemBase {
     private boolean transferCutoff;
     private boolean outtaking;
     private boolean transferCurrentSampled;
+    private int transferCurrentLoops;
     private double transferCurrentMilliamps;
     public static double intakeShoot = 0.36, transShoot = 0.88;
     public static double transferCurrentLimitMilliamps = 6500.0;
@@ -31,6 +32,7 @@ public class Intake extends SubsystemBase {
         transferCutoff = false;
         outtaking = false;
         transferCurrentSampled = false;
+        transferCurrentLoops = 0;
         intake.setCachingTolerance(0.05);
         transfer.setCachingTolerance(0.05);
     }
@@ -53,8 +55,11 @@ public class Intake extends SubsystemBase {
             transferCutoff = true;
             transfer.set(0.0);
         }
-        // TeleOp reads before periodic(); share that sample, then expire it for the next loop.
-        transferCurrentSampled = false;
+        // Share one current sample between rumble and cutoff for five loops.
+        if (++transferCurrentLoops >= 5) {
+            transferCurrentSampled = false;
+            transferCurrentLoops = 0;
+        }
     }
 
     public void spinIn() {

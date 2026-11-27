@@ -88,13 +88,7 @@ public class kiroshiauto extends LinearOpMode {
                     long now = System.nanoTime();
                     if (now - lastTelemetryNanos >= 100_000_000L) {
                         lastTelemetryNanos = now;
-                        r.limelight.debug(telemetry);
-                        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
-                        telemetry.addData("x", pose.x());
-                        telemetry.addData("y", pose.y());
-                        telemetry.addData("heading", pose.heading());
-                        telemetry.addData("Goal", target);
-                        telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
+                        telemetry.addData("Pose", pose);
 
                         if (follower.currentPath() != null) {
                             telemetry.addData("Current path distance remaining", follower.distanceToEndpoint());

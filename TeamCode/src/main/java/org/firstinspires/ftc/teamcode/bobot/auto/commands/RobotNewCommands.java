@@ -1,12 +1,14 @@
 package org.firstinspires.ftc.teamcode.bobot.auto.commands;
 
 import com.acmerobotics.dashboard.config.Config;
+import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.command.Command;
 import com.seattlesolvers.solverslib.command.CommandBase;
 import com.seattlesolvers.solverslib.command.InstantCommand;
 
 import org.firstinspires.ftc.teamcode.bobot.RobotNew;
+import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
 
 @Config
 public class RobotNewCommands {
@@ -19,7 +21,10 @@ public class RobotNewCommands {
     private RobotNewCommands() {}
 
     public static Command intake(RobotNew robot) {
-        return robot.intake.in();
+        return new InstantCommand(() -> {
+            robot.intake.spinIn();
+            robot.rgb.intake();
+        }, robot.intake);
     }
 
     public static Command nudgee(RobotNew robot, double radians) {
@@ -42,13 +47,24 @@ public class RobotNewCommands {
     }
 
     public static Command setBaseVel(RobotNew robot, double velocityTPS) {
-        return new InstantCommand(() -> RobotNew.ShooterNew.baseVel = velocityTPS, robot.shooter);
+        return new InstantCommand(() -> {
+            RobotNew.ShooterNew.baseVel = velocityTPS;
+            robot.shooter.clearTargetTPS();
+        }, robot.shooter);
+    }
+
+    public static Command useDistanceTPS(RobotNew robot) {
+        return new InstantCommand(() -> robot.shooter.setDistanceTarget(() -> {
+            Pose pose = robot.drive.getPose();
+            return pose.distance(Turret.selectWestFieldTarget(pose));
+        }), robot.shooter);
     }
 
     public static Command idle(RobotNew robot) {
         return new InstantCommand(() -> {
             robot.intake.spinOff();
             robot.shooter.turnOff();
+            robot.rgb.idle();
         }, robot.intake, robot.shooter);
     }
 
@@ -70,6 +86,7 @@ public class RobotNewCommands {
 
             @Override
             public void initialize() {
+                robot.rgb.shoot();
                 stopperOpen = false;
                 compensationTriggered = false;
                 completedShot = false;
@@ -126,8 +143,10 @@ public class RobotNewCommands {
                 robot.shooter.setFeeding(false);
                 if (!interrupted && completedShot) {
                     robot.intake.spinIn();
+                    robot.rgb.intake();
                 } else {
                     robot.intake.spinOff();
+                    robot.rgb.idle();
                 }
             }
         };

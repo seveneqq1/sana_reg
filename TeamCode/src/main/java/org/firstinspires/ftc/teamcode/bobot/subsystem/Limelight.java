@@ -7,8 +7,6 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Position;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 @Config
@@ -32,9 +30,11 @@ public class Limelight extends SubsystemBase {
     public static double shooterYawOffsetDegrees = 0;
 
     public static int confirmLoops = 3;
-    public static int pipeline = 0;
+    public static int pipeline = 1;
     public static double maximumFrameAgeMs = 100;
 
+    public static volatile boolean enabled = true;
+    private boolean polling;
     private Limelight3A limelight;
     private Cell target = Cell.redAudience;
     private boolean wasUp, tipped;
@@ -53,7 +53,10 @@ public class Limelight extends SubsystemBase {
         if (limelight == null) return;
         limelight.pipelineSwitch(pipeline);
         limelight.setPollRateHz(100);
-        limelight.start();
+        if (enabled) {
+            limelight.start();
+            polling = true;
+        }
     }
 
     public void setTarget(Cell target) {
@@ -69,6 +72,20 @@ public class Limelight extends SubsystemBase {
     @Override
     public void periodic() {
         if (limelight == null) return;
+        if (!enabled) {
+            if (polling) limelight.stop();
+            polling = false;
+            latestResult = null;
+            frameTimestamp = Double.NaN;
+            invalidateMeasurements();
+            reset();
+            return;
+        }
+        if (!polling) {
+            limelight.pipelineSwitch(pipeline);
+            limelight.start();
+            polling = true;
+        }
 
         LLResult result = limelight.getLatestResult();
         if (result == null || !result.isValid() || result.getPipelineIndex() != pipeline
@@ -89,46 +106,21 @@ public class Limelight extends SubsystemBase {
         }
         if (!newFrame && tagCount > 0) return;
 
-        double sumX = 0, sumHeight = 0;
-        int count = 0, heightCount = 0;
-
-        if (result != null && result.isValid()) {
-            for (FiducialResult tag : result.getFiducialResults()) {
-                int id = tag.getFiducialId();
-                if (id < target.firstId || id > target.firstId + 3) continue;
-                if (!Double.isFinite(tag.getTargetXDegrees())) continue;
-
-                sumX += tag.getTargetXDegrees();
-                count++;
-                if (tag.getTargetPoseCameraSpace() != null) {
-                    Position p = tag.getTargetPoseCameraSpace().getPosition().toUnit(DistanceUnit.INCH);
-                    double range = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-                    double tagHeight = cameraHeight + range
-                            * Math.sin(Math.toRadians(cameraPitch + tag.getTargetYDegrees()));
-                    if (Double.isFinite(tagHeight)) {
-                        sumHeight += tagHeight;
-                        heightCount++;
-                    }
-                }
-            }
+        double sumCorrection = 0;
+        int count = 0;
+        for (FiducialResult tag : result.getFiducialResults()) {
+            double correction = target.getCorrectionDegrees(
+                    tag.getFiducialId(), tag.getTargetXDegrees());
+            if (!Double.isFinite(correction)) continue;
+            sumCorrection += correction;
+            count++;
         }
-
         if (count == 0) {
             invalidateMeasurements();
             return;
         }
-
-        angle = -sumX / count;
+        angle = sumCorrection / count;
         tagCount = count;
-        height = heightCount > 0 ? sumHeight / heightCount : Double.NaN;
-        if (!newFrame || !Double.isFinite(height)) return;
-
-        if (height > splitHeight) {
-            wasUp = true;
-            lowLoops = 0;
-        } else if (wasUp && ++lowLoops >= confirmLoops) {
-            tipped = true;
-        }
     }
 
     public void reset() {
@@ -142,6 +134,7 @@ public class Limelight extends SubsystemBase {
             limelight.stop();
             limelight = null;
         }
+        polling = false;
         latestResult = null;
         frameTimestamp = Double.NaN;
         invalidateMeasurements();
@@ -152,7 +145,7 @@ public class Limelight extends SubsystemBase {
     }
 
     public boolean hasTarget() {
-        return Double.isFinite(angle) && validAge(getFrameAgeMs());
+        return enabled && Double.isFinite(angle) && validAge(getFrameAgeMs());
     }
 
     public boolean isTipped() {
@@ -184,12 +177,12 @@ public class Limelight extends SubsystemBase {
     }
 
     public void debug(Telemetry telemetry) {
+        telemetry.addData("Limelight enabled", enabled);
         telemetry.addData("Limelight cell", target);
         telemetry.addData("Limelight tags", getTagCount());
+        telemetry.addData("Limelight minimum tags", VisionAimTrim.minimumTags);
         telemetry.addData("Limelight correction error (deg)", getAngle());
         telemetry.addData("Limelight frame age (ms)", getFrameAgeMs());
-        telemetry.addData("Limelight height (in)", height);
-        telemetry.addData("Limelight tipped", tipped);
     }
 
     private boolean validAge(double ageMs) {
@@ -210,6 +203,12 @@ public class Limelight extends SubsystemBase {
 
         Cell(int firstId) {
             this.firstId = firstId;
+        }
+
+        double getCorrectionDegrees(int tagId, double txDegrees) {
+            int index = tagId - firstId;
+            if (index < 0 || index >= 4 || !Double.isFinite(txDegrees)) return Double.NaN;
+            return -txDegrees;
         }
 
         public static Cell forFieldTarget(double x, double y) {

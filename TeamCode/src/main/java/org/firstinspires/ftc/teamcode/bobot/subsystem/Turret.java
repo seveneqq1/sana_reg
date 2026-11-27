@@ -32,6 +32,7 @@ public class Turret extends SubsystemBase {
     private Limelight limelight;
     private final VisionAimTrim visionTrim = new VisionAimTrim();
     private boolean automaticAiming;
+    private boolean outOfRange;
     private double visionAimBiasDegrees;
 
     public void init(HardwareMap hw) {
@@ -43,6 +44,7 @@ public class Turret extends SubsystemBase {
         servo1 = new ServoEx(hw, "servo1");
         servo2 = new ServoEx(hw, "servo2");
         targetAngleDegrees = centerAngleDegrees;
+        outOfRange = false;
         aimTrimRadians = 0;
         clearVisionCorrection();
         servo1.setCachingTolerance(0.0001);
@@ -77,6 +79,7 @@ public class Turret extends SubsystemBase {
         double dx = target.x() - robot.x();
         double dy = target.y() - robot.y();
         if (dx == 0 && dy == 0) {
+            outOfRange = false;
             clearVisionCorrection();
             return;
         }
@@ -119,7 +122,8 @@ public class Turret extends SubsystemBase {
             }
         }
 
-        if (shortest == Double.POSITIVE_INFINITY) {
+        outOfRange = shortest == Double.POSITIVE_INFINITY;
+        if (outOfRange) {
             double toLow = Math.abs(normalizeAngle(Math.toRadians(desired - low)));
             double toHigh = Math.abs(normalizeAngle(Math.toRadians(desired - high)));
             best = toLow < toHigh ? low : high;
@@ -127,11 +131,21 @@ public class Turret extends SubsystemBase {
         targetAngleDegrees = best;
     }
 
+    public boolean isOutOfRange() {
+        return outOfRange;
+    }
+
+    public void resetAimTrim() {
+        aimTrimRadians = 0;
+        clearVisionCorrection();
+    }
+
     public double getYaw() {
         return Math.toRadians(targetAngleDegrees + visionTrim.getDegrees() - centerAngleDegrees);
     }
 
     public void addYaw(double radians) {
+        outOfRange = false;
         double angle = targetAngleDegrees + visionTrim.getDegrees() + Math.toDegrees(radians);
         clearVisionCorrection();
         targetAngleDegrees = Math.max(lowLimit(), Math.min(highLimit(), angle));

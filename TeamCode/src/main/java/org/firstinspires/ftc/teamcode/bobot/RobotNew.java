@@ -15,8 +15,12 @@ import org.firstinspires.ftc.teamcode.bobot.subsystem.Drive;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Flower;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Limelight;
+import org.firstinspires.ftc.teamcode.bobot.subsystem.Rgb;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.bobot.util.PoseStorage;
+import org.firstinspires.ftc.teamcode.bobot.util.RegShooter;
+
+import java.util.function.DoubleSupplier;
 
 import dev.frozenmilk.dairy.cachinghardware.CachingDcMotorEx;
 
@@ -30,6 +34,7 @@ public class RobotNew {
     public final Limelight limelight = new Limelight();
     public final Turret turret = new Turret();
     public final Flower flower = new Flower();
+    public final Rgb rgb = new Rgb();
 
     private RobotNew() {}
 
@@ -69,6 +74,11 @@ public class RobotNew {
 
     public void periodic() {
         drive.periodic();
+        periodicAfterDriveUpdate();
+    }
+
+    /** Update mechanisms after the caller has refreshed localization. */
+    public void periodicAfterDriveUpdate() {
         intake.periodic();
         shooter.periodic();
         limelight.periodic();
@@ -87,6 +97,8 @@ public class RobotNew {
         public DcMotorEx l, r;
         private Servo stopper;
         private VoltageSensor voltageSensor;
+        private double batteryVoltage;
+        private int voltageLoopsRemaining;
 
         public static boolean predictiveCompEnabled = true;
         public static double shotBoostTPS = 120;
@@ -113,6 +125,8 @@ public class RobotNew {
         private double lastVelocity = 0;
         private long lastTime = 0;
         private boolean standby = false;
+        private Double targetTPSOverride;
+        private DoubleSupplier distanceInchesSupplier;
 
         public double power = 0;
         public double currentVelocity = 0;
@@ -127,6 +141,7 @@ public class RobotNew {
         public void init(HardwareMap hw){
             // Reset any final-shot override left by the previous OpMode.
             baseVel = 1234;
+            clearTargetTPS();
             // Readiness must wait for an encoder sample from this OpMode.
             currentVelocity = Double.NaN;
             acceleration = 0;
@@ -140,6 +155,7 @@ public class RobotNew {
             r.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
             voltageSensor = hw.voltageSensor.iterator().next();
+            voltageLoopsRemaining = 0;
 
             stopper = hw.get(Servo.class, "stopper");
             setFeeding(false);
@@ -154,7 +170,25 @@ public class RobotNew {
         }
 
         public double getTarget(){
-            return baseVel;
+            if (distanceInchesSupplier != null) {
+                return RegShooter.velForDist(distanceInchesSupplier.getAsDouble(), baseVel);
+            }
+            return targetTPSOverride != null ? targetTPSOverride : baseVel;
+        }
+
+        public void setTargetTPS(double targetTPS) {
+            distanceInchesSupplier = null;
+            targetTPSOverride = Double.isFinite(targetTPS) && targetTPS > 0 ? targetTPS : 0;
+        }
+
+        public void setDistanceTarget(DoubleSupplier distanceInchesSupplier) {
+            targetTPSOverride = null;
+            this.distanceInchesSupplier = distanceInchesSupplier;
+        }
+
+        public void clearTargetTPS() {
+            targetTPSOverride = null;
+            distanceInchesSupplier = null;
         }
 
         public void setStandby(boolean standby){
@@ -196,7 +230,11 @@ public class RobotNew {
         }
 
         public double getVoltage(){
-            return voltageSensor.getVoltage();
+            if (voltageLoopsRemaining == 0) {
+                batteryVoltage = voltageSensor.getVoltage();
+                voltageLoopsRemaining = 5;
+            }
+            return batteryVoltage;
         }
 
         public double getShooter1_Amps(){
@@ -241,6 +279,7 @@ public class RobotNew {
             resetPID();
             set(0);
             setFeeding(false);
+            clearTargetTPS();
             standby = false;
             on = false;
         }
@@ -255,6 +294,7 @@ public class RobotNew {
 
         @Override
         public void periodic(){
+            if (voltageLoopsRemaining > 0) voltageLoopsRemaining--;
             long currentTime = System.nanoTime();
             double dt = lastTime == 0 ? 0 : (currentTime - lastTime) * 1e-9;
             lastTime = currentTime;

@@ -35,7 +35,7 @@ public class Rgb {
 
     public void periodic() {
         if (shootPressedAt >= 0 && System.nanoTime() - shootPressedAt >= 1000_000_000L) {
-            if(System.nanoTime() - shootPressedAt <= 3000_000_000L){
+            if(System.nanoTime() - shootPressedAt <= 2000_000_000L){
                 afterShoot();
             } else {
                 idle();

@@ -40,8 +40,8 @@ public class auto_new extends LinearOpMode {
     private final Pose shootgardenControl1 = poseFactory.of(28, 18, 0);
     private final Pose shootgardenControl2 = poseFactory.of(16, 122, 0);
     private final Pose takeflower1Start = poseFactory.of(47.5, 121.5, 90);
-    private final Pose takeflower1 = poseFactory.of(47.5, 129, 90);
-    private final Pose back1shoot = poseFactory.of(47.5, 117.5, 90);
+    private final Pose takeflower1 = poseFactory.of(47.5, 129.35, 90);
+    private final Pose back1shoot = poseFactory.of(47.5, 121.5, 90);
     private final Pose goflower2Start = poseFactory.of(47.5, 115, 90);
     private final Pose goflower2 = poseFactory.of(19.5, 46.5, 180);
     private final Pose goflower2Control1 = poseFactory.of(23, 106, 0);
@@ -49,7 +49,7 @@ public class auto_new extends LinearOpMode {
     private final Pose flowertake2 = poseFactory.of(13.5, 47.5, 180);
     private final Pose shootflower2Start = poseFactory.of(14.5, 47.5, 180);
     private final Pose shootflower2 = poseFactory.of(57.5, 21.5, 70);
-    private final Pose park = poseFactory.of(8.5, 122.5, 0);
+    private final Pose park = poseFactory.of(8.5, 122.5, 0); //8.5 92 park bottom
     private final Pose parkControl1 = poseFactory.of(70.5, 132.5, 0);
     private final Pose parkControl2 = poseFactory.of(47.5, 140, 0);
     private final Pose parkControl3 = poseFactory.of(40, 101, 0);
@@ -58,6 +58,8 @@ public class auto_new extends LinearOpMode {
     private final Pose parkSegment2End = poseFactory.of(8.5, 122.5, 0);
     private SequentialCommandGroup autoRoutine() {
         return new SequentialCommandGroup(
+                useDistanceTPS(r),
+                new WaitCommand(300),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootpreload()),
                         spinUp(r)
@@ -116,7 +118,7 @@ public class auto_new extends LinearOpMode {
                                 new WaitCommand(500),
                                 closeFlower(r)
                         ),
-                        nudgee(r, 0.5),
+                        nudgee(r, 0.2),
                         new SequentialCommandGroup(
                                 spinUp(r),
                                 new WaitCommand(1200),
@@ -134,6 +136,7 @@ public class auto_new extends LinearOpMode {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         try {
             r.init(hardwareMap, start);
+            r.rgb.init(hardwareMap);
             follower = r.drive.getFollower();
             follower.update();
 
@@ -153,17 +156,15 @@ public class auto_new extends LinearOpMode {
                     Pose target = Turret.selectWestFieldTarget(pose);
                     r.turret.face(target, pose, follower.velocity().omega);
                     scheduler.run();
+                    r.rgb.periodic();
 
                     long now = System.nanoTime();
                     if (now - lastTelemetryNanos >= 100_000_000L) {
                         lastTelemetryNanos = now;
-                        r.limelight.debug(telemetry);
-                        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
-                        telemetry.addData("x", pose.x());
-                        telemetry.addData("y", pose.y());
-                        telemetry.addData("heading", pose.heading());
-                        telemetry.addData("Goal", target);
-                        telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
+                        telemetry.addData("Pose", pose);
+                        telemetry.addData("Distance to goal (in)", "%.2f", pose.distance(target));
+                        telemetry.addData("Shooter TPS", "%.0f / %.0f",
+                                r.shooter.getVel(), r.shooter.getActiveTargetTPS());
 
                         telemetry.update();
                     }
@@ -181,6 +182,7 @@ public class auto_new extends LinearOpMode {
                 }
             }
         } finally {
+            r.rgb.idle();
             r.limelight.stop();
         }
     }

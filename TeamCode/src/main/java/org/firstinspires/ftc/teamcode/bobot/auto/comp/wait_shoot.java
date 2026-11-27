@@ -9,30 +9,35 @@ import com.pedropathing.api.PoseFactory;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.math.Pose;
 import com.pedropathing.paths.Path;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
+import com.seattlesolvers.solverslib.command.WaitCommand;
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand;
 
 import org.firstinspires.ftc.teamcode.bobot.RobotNew;
 import org.firstinspires.ftc.teamcode.bobot.auto.commands.RobotNewCommands;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
 
-@Disabled
-public class autoDumb extends LinearOpMode {
-    RobotNew r;
-    Follower f;
-    private final PoseFactory poseFactory = PoseFactory.degrees();
-    private final Pose start = poseFactory.of(13.8937, 133.9331, 180);
-    private final Pose path1 = poseFactory.of(8.7904, 120.7872, 180);
+@Autonomous(name = "wait  shoot  park")
+public class wait_shoot extends LinearOpMode {
+    private RobotNew r;
+    private Follower follower;
 
-    private SequentialCommandGroup autoRoutine(){
+    private final PoseFactory poseFactory = PoseFactory.degrees();
+    private final Pose start = poseFactory.of(62.8, 133.5, 180);
+    private final Pose path1 = poseFactory.of(8.6992, 120.37, 180); //8.5 92 bottom park
+    private final Pose path1Control1 = poseFactory.of(65.4193, 112.3903, 0);
+
+    private SequentialCommandGroup autoRoutine() {
         return new SequentialCommandGroup(
+                useDistanceTPS(r),
                 spinUp(r),
-                setBaseVel(r, 1531),
+                new WaitCommand(8000),
                 shoot(r),
-                new FollowPathCommand(f, path1()),
+                new WaitCommand(15000),
+                new FollowPathCommand(follower, path1()),
                 RobotNewCommands.idle(r)
         );
     }
@@ -43,8 +48,9 @@ public class autoDumb extends LinearOpMode {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         try {
             r.init(hardwareMap, start);
-            f = r.drive.getFollower();
-            f.update();
+            r.rgb.init(hardwareMap);
+            follower = r.drive.getFollower();
+            follower.update();
 
             waitForStart();
             if (isStopRequested()) return;
@@ -57,43 +63,45 @@ public class autoDumb extends LinearOpMode {
                 scheduler.schedule(routine);
                 long lastTelemetryNanos = System.nanoTime() - 100_000_000L;
                 while (opModeIsActive()) {
-                    f.update();
-                    Pose pose = f.pose();
+                    follower.update();
+                    Pose pose = follower.pose();
                     Pose target = Turret.selectWestFieldTarget(pose);
-                    r.turret.face(target, pose, f.velocity().omega);
+                    r.turret.face(target, pose, follower.velocity().omega);
                     scheduler.run();
+                    r.rgb.periodic();
 
                     long now = System.nanoTime();
                     if (now - lastTelemetryNanos >= 100_000_000L) {
                         lastTelemetryNanos = now;
-                        r.limelight.debug(telemetry);
-                        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
-                        telemetry.addData("x", pose.x());
-                        telemetry.addData("y", pose.y());
-                        telemetry.addData("heading", pose.heading());
-                        telemetry.addData("Goal", target);
-                        telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
-
+                        telemetry.addData("Pose", pose);
+                        telemetry.addData("Distance to goal (in)", "%.2f", pose.distance(target));
+                        telemetry.addData("Shooter TPS", "%.0f / %.0f",
+                                r.shooter.getVel(), r.shooter.getActiveTargetTPS());
                         telemetry.update();
                     }
                 }
             } finally {
                 r.turret.off();
                 try {
-                    scheduler.cancel(routine);
-                    f.stop();
-                    f.update();
+                    scheduler.cancelAll();
+                    follower.stop();
+                    follower.update();
                     r.saveEnd();
                 } finally {
-                    scheduler.registerSubsystem(r.drive);
+                    try {
+                        r.turnOff();
+                    } finally {
+                        scheduler.registerSubsystem(r.drive);
+                    }
                 }
             }
         } finally {
+            r.rgb.idle();
             r.limelight.stop();
         }
     }
 
     public Path path1() {
-        return Paths.line(start, path1).linear(start, path1);
+        return Paths.curve(start, path1Control1, path1).linear(start, path1);
     }
 }

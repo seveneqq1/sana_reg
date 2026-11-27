@@ -41,10 +41,11 @@ public class AutoNewFirstFlower extends LinearOpMode {
     private final Pose takeflower1Start = poseFactory.of(46.5, 121.5, 90);
     private final Pose takeflower1 = poseFactory.of(46.5, 128, 90);
     private final Pose back1shoot = poseFactory.of(46.5, 112, 90);
-    private final Pose park = poseFactory.of(8.5, 122.5, 0);
+    private final Pose park = poseFactory.of(8.5, 122.5, 0); //8.5 92 bottom park
 
     private SequentialCommandGroup autoRoutine() {
         return new SequentialCommandGroup(
+                useDistanceTPS(r),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootpreload()),
                         spinUp(r)
@@ -91,6 +92,7 @@ public class AutoNewFirstFlower extends LinearOpMode {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         try {
             r.init(hardwareMap, start);
+            r.rgb.init(hardwareMap);
             follower = r.drive.getFollower();
             follower.update();
 
@@ -110,17 +112,15 @@ public class AutoNewFirstFlower extends LinearOpMode {
                     Pose target = Turret.selectWestFieldTarget(pose);
                     r.turret.face(target, pose, follower.velocity().omega);
                     scheduler.run();
+                    r.rgb.periodic();
 
                     long now = System.nanoTime();
                     if (now - lastTelemetryNanos >= 100_000_000L) {
                         lastTelemetryNanos = now;
-                        r.limelight.debug(telemetry);
-                        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
-                        telemetry.addData("x", pose.x());
-                        telemetry.addData("y", pose.y());
-                        telemetry.addData("heading", pose.heading());
-                        telemetry.addData("Goal", target);
-                        telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
+                        telemetry.addData("Pose", pose);
+                        telemetry.addData("Distance to goal (in)", "%.2f", pose.distance(target));
+                        telemetry.addData("Shooter TPS", "%.0f / %.0f",
+                                r.shooter.getVel(), r.shooter.getActiveTargetTPS());
 
                         telemetry.update();
                     }
@@ -138,6 +138,7 @@ public class AutoNewFirstFlower extends LinearOpMode {
                 }
             }
         } finally {
+            r.rgb.idle();
             r.limelight.stop();
         }
     }

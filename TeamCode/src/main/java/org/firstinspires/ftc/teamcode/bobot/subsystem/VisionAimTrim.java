@@ -11,7 +11,7 @@ public class VisionAimTrim {
     public static double maxErrorDegrees = 15.0;
     public static double deadbandDegrees = 0.3;
     public static double aimOffsetDegrees = 0.0;
-    public static int minimumTags = 4;
+    public static int minimumTags = 1;
 
     private double degrees;
     private double lastTimestamp = Double.NaN;

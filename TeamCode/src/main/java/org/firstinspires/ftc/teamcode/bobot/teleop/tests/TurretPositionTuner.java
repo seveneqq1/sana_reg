@@ -12,8 +12,8 @@ import com.qualcomm.robotcore.hardware.Servo;
 @Config
 @TeleOp(name = "Turret position tuner", group = "test")
 public class TurretPositionTuner extends OpMode {
-    public static double pos1 = 0.062;
-    public static double pos2 = 0.062;
+    public static double pos1 = 0.055;
+    public static double pos2 = 0.055;
 
     private Servo servo1;
     private Servo servo2;

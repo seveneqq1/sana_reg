@@ -61,6 +61,7 @@ public class test_only_path_new extends LinearOpMode {
 
     private SequentialCommandGroup autoRoutine() {
         return new SequentialCommandGroup(
+                useDistanceTPS(r),
                 spinUp(r),
                 new FollowPathCommand(follower, shootPreload()),
                 shoot(r),
@@ -125,6 +126,7 @@ public class test_only_path_new extends LinearOpMode {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         try {
             r.init(hardwareMap, start);
+            r.rgb.init(hardwareMap);
             follower = r.drive.getFollower();
             follower.update();
 
@@ -144,17 +146,15 @@ public class test_only_path_new extends LinearOpMode {
                     Pose target = Turret.selectWestFieldTarget(pose);
                     r.turret.face(target, pose, follower.velocity().omega);
                     scheduler.run();
+                    r.rgb.periodic();
 
                     long now = System.nanoTime();
                     if (now - lastTelemetryNanos >= 100_000_000L) {
                         lastTelemetryNanos = now;
-                        r.limelight.debug(telemetry);
-                        telemetry.addData("Vision trim (deg)", r.turret.getVisionTrimDegrees());
-                        telemetry.addData("x", pose.x());
-                        telemetry.addData("y", pose.y());
-                        telemetry.addData("heading", pose.heading());
-                        telemetry.addData("Goal", target);
-                        telemetry.addData("Turret target yaw (deg)", Math.toDegrees(r.turret.getYaw()));
+                        telemetry.addData("Pose", pose);
+                        telemetry.addData("Distance to goal (in)", "%.2f", pose.distance(target));
+                        telemetry.addData("Shooter TPS", "%.0f / %.0f",
+                                r.shooter.getVel(), r.shooter.getActiveTargetTPS());
 
                         telemetry.update();
                     }
@@ -166,11 +166,13 @@ public class test_only_path_new extends LinearOpMode {
                     follower.stop();
                     follower.update();
                     r.saveEnd();
+                    r.turnOff();
                 } finally {
                     scheduler.registerSubsystem(r.drive);
                 }
             }
         } finally {
+            r.rgb.idle();
             r.limelight.stop();
         }
     }

@@ -58,11 +58,12 @@ Servo calibration OpModes intentionally retain their raw fixed-position commands
 
 Configure a Limelight3A named `limelight` in the robot configuration. A missing
 device or absent target leaves normal pose aiming available. In the camera web
-interface configure the selected pipeline (default 0) for AprilTags, family
+interface configure the selected pipeline (default 1) for AprilTags, family
 36h11 and the manual's 3.25-inch tag size (0.08255 m). Correct camera orientation
 so horizontal angular offsets describe left/right turret error. Full 3D is
-needed for useful height estimates; horizontal correction uses per-tag angles
-and does not use botPose or fixed robot-to-camera extrinsics.
+required for both height estimates and partial-cluster aiming: the correction
+uses each tag's horizontal angle and positive camera-space Z depth. Tags with
+missing/invalid depth are skipped. It does not use botPose or fixed robot-to-camera extrinsics.
 
 Dashboard settings under `VisionAimTrim`:
 
@@ -74,7 +75,7 @@ Dashboard settings under `VisionAimTrim`:
 | gainPerSecond | 2 | Error response; unverified starting value |
 | maxErrorDegrees | 15 | Rejects grossly misaligned observations |
 | deadbandDegrees | 0.3 | Holds trim near the desired aim |
-| minimumTags | 4 | Requires the full cell cluster to correct aim |
+| minimumTags | 1 | Uses any nonempty set of usable tags from the selected cell |
 | aimOffsetDegrees | 0 | Additional desired aim offset, positive CCW |
 
 `Limelight.maximumFrameAgeMs` defaults to 100 ms and includes capture/pipeline
@@ -91,8 +92,9 @@ degrees and currently affects only height/tipped detection. `cameraHeight=10.986
 inches above the floor is user-reported, interpreted as the camera lens-center
 height. `splitHeight=40` remains a legacy placeholder. These settings do not
 enter the horizontal correction math.
-Camera-relative correction is still `-tx` in degrees; physical roll/pitch
-compensation and verification of angle signs after image orientation are pending.
+Camera-relative correction is the negative of the estimated cell-center tx in
+degrees; physical roll/pitch compensation and verification of angle signs after
+image orientation are pending.
 
 ### Mounting offsets in Dashboard
 
@@ -140,14 +142,49 @@ hardware: frame validation, frozen timestamps, partial/wrong tags, servo output,
 manual/nudge/heading-lead behavior, limits, tipping and lifecycle cleanup.
 
 These checks cannot establish physical correction direction, camera calibration
-or stability. Verify them with a stationary robot and the correct complete tag
-cluster visible. Check `Limelight cell`, tags, error, frame age and `Vision trim`
+or stability. Verify them with a stationary robot and one or more tags from the selected cell visible. Check `Limelight cell`, tags, error, frame age and `Vision trim`
 in telemetry; a small aiming error should shrink as trim changes. Dashboard's
 `VisionAimTrim.enabled=false` restores pose-only aiming.
 
 Dropping below minimumTags, losing/staling the target, disabling correction or
 changing cells clears the trim immediately. This can return up to 8 degrees
 toward pose aiming; intermittent tag visibility can produce reacquisition motion.
-Lowering minimumTags permits correction with a partial cluster but can shift
-the apparent center toward the visible tags. This compensates observed aim error;
-it does not diagnose slipping hardware, servo calibration or odometry drift.
+Partial-cluster correction estimates the goal center from tag offsets rather
+than averaging raw tag angles. This compensates observed aim error; it does not
+diagnose slipping hardware, servo calibration or odometry drift.
+
+
+## Partial-cluster aiming (2026-11-27)
+
+Compared the local `kiroshi_reg` implementation in
+`subsystems/LimelightSubsystem.java#getHiveTx`,
+`utils/Field/AprilTagClusters.java`, and `Commands/TurretCommands/TurretHybridCommand.java`.
+As requested, use any visible usable tags from the **selected goal**, including
+just one. Keep rejecting other goals so their detections do not pull the turret
+away from the intended target.
+
+For each matching tag, convert camera-space Z to inches and estimate
+`centerTx = tagTx - degrees(atan2(tagOffsetInches, cameraSpaceZInches))`.
+Average `-centerTx` for the turret correction, retaining this robot's sign.
+The reference's offsets are -6.5, -2.75, +2.75, +6.5 inches for tag orders
+34/35/36/37 and 38/39/40/41, and reversed orders 33/32/31/30 and 45/44/43/42.
+These are ported reference field geometry, not newly measured calibration.
+The formula matches the reference's approximation; oblique views and this
+camera's physical orientation still need hardware validation.
+
+The reference also gates updates by chassis velocity and turret settling;
+those controls were not ported. The existing bounded/rate-limited trim,
+100 ms freshness limit, pipeline checks, manual override and mechanical limits
+remain. The reference uses 200 ms; this change does not increase that age limit.
+
+`Limelight tags` now counts matching tags with usable finite angles and positive
+3D depth. Telemetry also displays `Limelight minimum tags`. Its source default
+is 1; check that a live Dashboard setting has not retained an override of 4.
+Configure the AprilTag pipeline for 3D pose output and the correct tag size.
+Reinitialize after deploying the change.
+
+New host tests check every tag in all four goal clusters, single-tag and partial
+center estimates, the reversed far-goal ordering, wrong-goal rejection, and
+invalid/nonpositive depth and angle rejection. Existing trim tests continue to
+cover loss/error fallback behavior at the controller layer. No hardware test or
+USB disconnection fix is implied by these checks.
