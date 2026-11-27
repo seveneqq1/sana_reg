@@ -13,6 +13,7 @@ import com.pedropathing.paths.interpolator.Interpolator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
+import com.seattlesolvers.solverslib.command.ConditionalCommand;
 import com.seattlesolvers.solverslib.command.InstantCommand;
 import com.seattlesolvers.solverslib.command.ParallelCommandGroup;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
@@ -30,15 +31,18 @@ public class auto_2_stable extends LinearOpMode {
 
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
-    private final Pose start = poseFactory.of(56, 8, 180);
+    private final Pose start = poseFactory.of(55.5, 8, 180);
     private final Pose prelaod = poseFactory.of(55.5, 18, 180);
     private final Pose gogarden1 = poseFactory.of(17.4981, 47.5, 180);
-    private final Pose takegarden1 = poseFactory.of(13.5, 47.5, 180);
-    private final Pose goflower2Start = poseFactory.of(13.5, 47.5, 180);
-    private final Pose goflower2 = poseFactory.of(46.5, 123.5, 90);
+    private final Pose takegarden1 = poseFactory.of(14, 47.5, 180);
+    private final Pose movegarden1_1 = poseFactory.of(24, 47.5, 180);
+    private final Pose movegarden1_2 = poseFactory.of(14, 47.5, 180);
+    private final Pose goflower2Start = poseFactory.of(14, 47.5, 180);
+    private final Pose goflower2 = poseFactory.of(46.5, 122.5, 90);
     private final Pose goflower2Control1 = poseFactory.of(32.5, 42, 0);
     private final Pose goflower2Control2 = poseFactory.of(21.5, 120, 0);
-    private final Pose takeflower2 = poseFactory.of(46.5, 129.1, 90);
+    private final Pose takeflower2 = poseFactory.of(46.5, 128, 90);
+    private final Pose moveflower2 = poseFactory.of(46.5, 120, 90);
     private final Pose takegarden = poseFactory.of(7.5, 8.5, 270);
     private final Pose takegardenControl1 = poseFactory.of(32, 120, 0);
     private final Pose takegardenControl2 = poseFactory.of(22, 22, 0);
@@ -57,7 +61,8 @@ public class auto_2_stable extends LinearOpMode {
 
     private SequentialCommandGroup autoRoutine() {
         return new SequentialCommandGroup(
-                new WaitCommand(400),
+                nudgee(r, -0.3),
+                new WaitCommand(800),
                 new ParallelCommandGroup(
                         spinUp(r),
                         new FollowPathCommand(follower, shootpreload())
@@ -69,25 +74,37 @@ public class auto_2_stable extends LinearOpMode {
                         intakeFlower(r),
                         intake(r)
                 ),
+                new WaitCommand(160),
                 new ParallelCommandGroup(
                         intake(r),
-                        new FollowPathCommand(follower, takegarden1())
+                        new FollowPathCommand(follower, takegarden1()),
+                        new SequentialCommandGroup(
+                                new WaitCommand(100),
+                                new FollowPathCommand(follower, movegarden1_1()),
+                                new WaitCommand(100),
+                                new FollowPathCommand(follower, movegarden1_2())
+                        )
                 ),
+                new WaitCommand(800),
                 new ParallelCommandGroup(
                         new SequentialCommandGroup(
-                                new WaitCommand(800),
+                                new WaitCommand(900),
                                 intake(r),
                                 spinUp(r)
                         ),
-                        new FollowPathCommand(follower, goflower2())
+                        new FollowPathCommand(follower, goflower2()),
+                        setFlower(r),
+                        nudgee(r, 0.1)
                 ),
-                new WaitCommand(200),
-                shoot(r),
+                new WaitCommand(400),
+                intake(r),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, takeflower2()),
-                        new ParallelCommandGroup(
-                                intake(r),
-                                spinUp(r)
+                        new SequentialCommandGroup(
+                                new WaitCommand(800),
+                                new FollowPathCommand(follower, moveflower2_1()),
+                                new WaitCommand(200),
+                                new FollowPathCommand(follower, moveflower2_2())
                         ),
                         shoot(r)
                 ),
@@ -100,7 +117,10 @@ public class auto_2_stable extends LinearOpMode {
                                 new WaitCommand(1000),
                                 spinUp(r)
                         ),
-                        closeFlower(r)
+                        new SequentialCommandGroup(
+                                new WaitCommand(1000),
+                                closeFlower(r)
+                        )
                 ),
                 new WaitCommand(200),
                 new ParallelCommandGroup(
@@ -180,6 +200,8 @@ public class auto_2_stable extends LinearOpMode {
     public Path takegarden1() {
         return Paths.line(gogarden1, takegarden1).constant(takegarden1);
     }
+    public Path movegarden1_1() { return Paths.line(takegarden1, movegarden1_1).linear(takegarden1, movegarden1_1); }
+    public Path movegarden1_2() { return Paths.line(movegarden1_1, takegarden1).linear(takegarden1, movegarden1_1); }
 
     public Path goflower2() {
         return Paths.curve(goflower2Start, goflower2Control1, goflower2Control2,
@@ -189,6 +211,9 @@ public class auto_2_stable extends LinearOpMode {
     public Path takeflower2() {
         return Paths.line(goflower2, takeflower2).constant(takeflower2);
     }
+
+    public Path moveflower2_1() { return Paths.line(takeflower2, moveflower2).linear(takeflower2, moveflower2); }
+    public Path moveflower2_2() { return Paths.line(moveflower2, takeflower2).linear(takeflower2, moveflower2); }
 
     public Path takegarden() {
         return Paths.curve(takeflower2, takegardenControl1, takegardenControl2,

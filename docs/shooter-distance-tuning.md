@@ -33,11 +33,11 @@ inches and the result in TPS:
 
 ```text
 Quadratic: TPS = 0.332561*x^2 - 30.533292*x + 1939.17245
-Linear:    TPS = 11.02715*x + 722.1
+Linear:    TPS = 9.28656*x + 819.41267
 ```
 
-`RegShooter.calibrated` starts true. **DISTANCE** mode uses the quadratic by
-default; set Dashboard `RegShooter.useQuadratic` to false to use the linear fit.
+`RegShooter.calibrated` starts true. **DISTANCE** mode uses the linear fit by
+default; set Dashboard `RegShooter.useQuadratic` to true to use the quadratic fit.
 Telemetry identifies the selected equation. The quadratic coefficients are
 `quadraticA/B/C`; the linear coefficients are `slopeTPSPerInch` and `interceptTPS`.
 Set `calibrated` false to temporarily fall back to the current fixed TPS.

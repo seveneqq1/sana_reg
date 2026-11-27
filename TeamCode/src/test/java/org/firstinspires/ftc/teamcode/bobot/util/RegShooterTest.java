@@ -56,8 +56,8 @@ public class RegShooterTest {
     public void switchesToSuppliedLinearFit() {
         RegShooter.calibrated = true;
         RegShooter.useQuadratic = false;
-        assertEquals(1383.729, RegShooter.velForDist(60, 1400), 1e-6);
-        assertEquals(1714.5435, RegShooter.velForDist(90, 1400), 1e-6);
+        assertEquals(1376.60627, RegShooter.velForDist(60, 1400), 1e-6);
+        assertEquals(1655.20307, RegShooter.velForDist(90, 1400), 1e-6);
     }
 
     @Test

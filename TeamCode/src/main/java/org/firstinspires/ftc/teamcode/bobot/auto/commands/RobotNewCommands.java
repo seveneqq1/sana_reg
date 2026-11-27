@@ -39,6 +39,10 @@ public class RobotNewCommands {
         return new InstantCommand(robot.flower::openFlower, robot.flower);
     }
 
+    public static Command setFlower(RobotNew robot) {
+        return new InstantCommand(robot.flower::open2Flower, robot.flower);
+    }
+
     public static Command spinUp(RobotNew robot) {
         return new InstantCommand(() -> {
             robot.shooter.setStandby(false);

@@ -21,6 +21,7 @@ import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand;
 import org.firstinspires.ftc.teamcode.bobot.RobotNew;
 import org.firstinspires.ftc.teamcode.bobot.auto.commands.RobotNewCommands;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
+import org.firstinspires.ftc.teamcode.bobot.util.RegShooter;
 
 @Autonomous(name = "Alikh auto new")
 public class auto_new extends LinearOpMode {
@@ -40,31 +41,32 @@ public class auto_new extends LinearOpMode {
     private final Pose shootgardenControl1 = poseFactory.of(28, 18, 0);
     private final Pose shootgardenControl2 = poseFactory.of(16, 122, 0);
     private final Pose takeflower1Start = poseFactory.of(47.5, 121.5, 90);
-    private final Pose takeflower1 = poseFactory.of(47.5, 129.35, 90);
-    private final Pose back1shoot = poseFactory.of(47.5, 121.5, 90);
+    private final Pose takeflower1 = poseFactory.of(47.5, 128.6, 90);
+    private final Pose moveflower1 = poseFactory.of(47.5, 120, 90);
+    private final Pose back1shoot = poseFactory.of(47.5, 120.5, 90);
     private final Pose goflower2Start = poseFactory.of(47.5, 115, 90);
     private final Pose goflower2 = poseFactory.of(19.5, 46.5, 180);
     private final Pose goflower2Control1 = poseFactory.of(23, 106, 0);
     private final Pose goflower2Control2 = poseFactory.of(27.5, 43, 0);
     private final Pose flowertake2 = poseFactory.of(13.5, 47.5, 180);
+    private final Pose flowermove2 = poseFactory.of(20.5, 47.5, 180);
     private final Pose shootflower2Start = poseFactory.of(14.5, 47.5, 180);
-    private final Pose shootflower2 = poseFactory.of(57.5, 21.5, 70);
+    private final Pose shootflower2Control1 = poseFactory.of(28, 42, 0);
+    private final Pose shootflower2Control2 = poseFactory.of(18, 121, 0);
+    private final Pose shootflower2 = poseFactory.of(54, 120, 70);
     private final Pose park = poseFactory.of(8.5, 122.5, 0); //8.5 92 park bottom
-    private final Pose parkControl1 = poseFactory.of(70.5, 132.5, 0);
-    private final Pose parkControl2 = poseFactory.of(47.5, 140, 0);
-    private final Pose parkControl3 = poseFactory.of(40, 101, 0);
     private final Pose parkSegment1Heading = poseFactory.of(8.5, 122.5, 70);
     private final Pose parkSegment2Start = poseFactory.of(8.5, 122.5, 70);
     private final Pose parkSegment2End = poseFactory.of(8.5, 122.5, 0);
     private SequentialCommandGroup autoRoutine() {
         return new SequentialCommandGroup(
-                useDistanceTPS(r),
-                new WaitCommand(300),
+                nudgee(r, -0.3),
+                new WaitCommand(200),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootpreload()),
                         spinUp(r)
                         ),
-                new WaitCommand(200),
+                new WaitCommand(100),
                 shoot(r),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootpreloadgarden()),
@@ -75,7 +77,7 @@ public class auto_new extends LinearOpMode {
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootgarden()),
                         new SequentialCommandGroup(
-                                new WaitCommand(3200),
+                                new WaitCommand(3000),
                                 new ParallelCommandGroup(
                                         intakeFlower(r),
                                         shoot(r)
@@ -85,20 +87,27 @@ public class auto_new extends LinearOpMode {
                 new ParallelCommandGroup(
                         intake(r),
                         new SequentialCommandGroup(
-                                new WaitCommand(200),
+                                new WaitCommand(60),
                                 new FollowPathCommand(follower, takeflower1())
                         ),
                         spinUp(r)
                 ),
-                new WaitCommand(1000),
+                new SequentialCommandGroup(
+                        new WaitCommand(120),
+                        new FollowPathCommand(follower, moveflower1_1()),
+                        new WaitCommand(80),
+                        new FollowPathCommand(follower, moveflower1_2())
+                ),
+                intake(r),
+                new WaitCommand(400),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, back1shoot()),
                         new SequentialCommandGroup(
-                                new WaitCommand(400),
+                                new WaitCommand(800),
                                 shoot(r)
                         )
                 ),
-                new WaitCommand(400),
+                new WaitCommand(100),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, goflower2()),
                         new SequentialCommandGroup(
@@ -106,25 +115,29 @@ public class auto_new extends LinearOpMode {
                                 intake(r)
                         )
                 ),
-                new WaitCommand(600),
+                new WaitCommand(520),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, flowertake2()),
                         intake(r)
                 ),
-                new WaitCommand(800),
+                new SequentialCommandGroup(
+                        new WaitCommand(120),
+                        new FollowPathCommand(follower, moveflower2_1()),
+                        new WaitCommand(120),
+                        new FollowPathCommand(follower, moveflower2_2())
+                ),
+                intake(r),
+                new WaitCommand(200),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootflower2()),
                         new SequentialCommandGroup(
                                 new WaitCommand(500),
                                 closeFlower(r)
                         ),
-                        nudgee(r, 0.2),
-                        new SequentialCommandGroup(
-                                spinUp(r),
-                                new WaitCommand(1200),
-                                shoot(r)
-                        )
+                        spinUp(r)
                 ),
+                new WaitCommand(200),
+                shoot(r),
                 new FollowPathCommand(follower, park()),
                 RobotNewCommands.idle(r)
         );
@@ -154,6 +167,9 @@ public class auto_new extends LinearOpMode {
                     follower.update();
                     Pose pose = follower.pose();
                     Pose target = Turret.selectWestFieldTarget(pose);
+                    double defaultTPS = RegShooter.velForDist(
+                            pose.distance(target), RobotNew.ShooterNew.baseVel);
+                    r.shooter.setTargetTPS(defaultTPS > 0 ? defaultTPS + 30 : 0);
                     r.turret.face(target, pose, follower.velocity().omega);
                     scheduler.run();
                     r.rgb.periodic();
@@ -205,6 +221,14 @@ public class auto_new extends LinearOpMode {
         return Paths.line(takeflower1Start, takeflower1).linear(takeflower1Start, takeflower1);
     }
 
+    public Path moveflower1_1(){
+        return Paths.line(takeflower1, moveflower1).linear(takeflower1, moveflower1);
+    }
+
+    public Path moveflower1_2(){
+        return Paths.line(moveflower1, takeflower1).linear(takeflower1, moveflower1);
+    }
+
     public Path back1shoot() {
         return Paths.line(takeflower1, back1shoot).constant(back1shoot);
     }
@@ -218,14 +242,19 @@ public class auto_new extends LinearOpMode {
         return Paths.line(goflower2, flowertake2).constant(flowertake2);
     }
 
+    public Path moveflower2_1(){
+        return Paths.line(flowertake2, flowermove2).linear(flowertake2, flowermove2);
+    }
+
+    public Path moveflower2_2(){
+        return Paths.line(flowermove2, flowertake2).linear(flowertake2, flowermove2);
+    }
+
     public Path shootflower2() {
-        return Paths.line(shootflower2Start, shootflower2).linear(shootflower2Start, shootflower2);
+        return Paths.curve(shootflower2Start, shootflower2Control1, shootflower2Control2, shootflower2).linear(shootflower2Start, shootflower2);
     }
 
     public Path park() {
-        return Paths.curve(shootflower2, parkControl1, parkControl2, parkControl3, park)
-                .heading(Interpolator.piecewise()
-                        .until(0.3, Interpolator.constant(parkSegment1Heading))
-                        .until(1, Interpolator.linear(parkSegment2Start, parkSegment2End)));
+        return Paths.line(shootflower2, park).heading(Interpolator.piecewise().until(0.2971, Interpolator.constant(parkSegment1Heading)).until(1, Interpolator.linear(parkSegment2Start, parkSegment2End)));
     }
 }

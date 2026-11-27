@@ -5,12 +5,12 @@ import com.acmerobotics.dashboard.config.Config;
 @Config
 public class RegShooter {
     public static boolean calibrated = true;
-    public static boolean useQuadratic = true;
+    public static boolean useQuadratic = false;
     public static double quadraticA = 0.332561;
     public static double quadraticB = -30.533292;
     public static double quadraticC = 1939.17245;
-    public static double slopeTPSPerInch = 11.02715;
-    public static double interceptTPS = 722.1;
+    public static double slopeTPSPerInch = 9.28656;
+    public static double interceptTPS = 799.41267;
 
     public static double velForDist(double distanceInches, double fixedTPS) {
         if (!Double.isFinite(distanceInches) || distanceInches < 0) return 0;

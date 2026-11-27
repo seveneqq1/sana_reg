@@ -7,7 +7,7 @@ public class VisionAimTrim {
     public static boolean enabled = true;
     public static double gainPerSecond = 2.0;
     public static double maxTrimDegrees = 8.0;
-    public static double maxRateDegreesPerSecond = 6.0;
+    public static double maxRateDegreesPerSecond = 20.0;
     public static double maxErrorDegrees = 15.0;
     public static double deadbandDegrees = 0.3;
     public static double aimOffsetDegrees = 0.0;
