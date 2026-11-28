@@ -1,190 +1,23 @@
-# Limelight turret correction
+# Limelight hybrid turret aiming
 
-## Refined implementation request
+Ported from stilxso/kiroshi_reg main commit e1cdc32b6c00b72c14b2ca5a42e56eb464343a84 (2026-11-28). Robot wiring, servo calibration, pose targets, manual controls and shooter logic remain Regional_Q's.
 
-Integrate the Limelight subsystem into Robot and RobotNew and all automatic
-turret-aiming autonomous and TeleOp modes. The camera rotates with the turret
-and is aligned horizontally with the shooter (user confirmed). Keep pose aiming
-as the baseline and apply a small, bounded, rate-limited vision trim using only
-fresh AprilTags belonging to the selected BIOBUZZ cell. Process each camera
-frame once, reject stale/wrong-pipeline/nonfinite results, preserve turret limits,
-manual control, intentional aim offsets, and existing shooting/path behavior.
-Fall back to pose aiming when vision is unavailable. Stop polling on every
-OpMode exit, including a stop before start. Expose telemetry and tuning settings,
-and validate compilation and simulated control behavior without deploying.
+Hardware name: `limelight`, FTC Limelight3A. The device is optional (`tryGet`). Configure AprilTags in camera pipeline 1; camera pipeline configuration itself is not supplied by the reference Java code.
 
-## Implementation plan
+`Turret.face()` polls the camera and averages raw horizontal angles of visible tags in the selected target cluster. Target coordinates select red audience (west/south, IDs 34–37), red (west/north, 30–33), blue audience (east/south, 38–41), or blue (east/north, 42–45), matching the reference hive coordinates. Camera results require validity and total frame age below 200 ms, including capture and targeting latency.
 
-1. Harden Limelight frame validation, freshness, target changes and lifecycle.
-2. Test and implement a bounded vision trim shared by Turret automatic aiming.
-3. Connect both Robot variants, automatic OpModes, stop cleanup and telemetry;
-   run host tests, simulated hardware checks and the Android debug build.
+On a new frame, when turret tracking error is below 1.5 degrees and it has settled longer than the frame age, accumulate `offset += 0.15 * tx` outside a 0.75-degree deadband, clamped to +/-25 degrees. Hold the offset without tags. Settling uses the reference's 400 degrees/second estimate, capped at 0.1 seconds per periodic update; this is not measured servo feedback. The helper preserves the reference update rules.
 
-Existing user edits in Turret, DebugNew and autonomous code must be preserved.
-Fixed-position servo calibration OpModes must remain fixed-position tests.
+Regional_Q yaw is bearing minus heading, opposite to the reference's heading minus bearing. Subtract the reference offset when applying it to Regional_Q yaw. Physical servo/camera correction direction still needs a robot check. No camera height, pitch, roll, translation or remembered mounting offsets are applied, matching the reference's raw-tx algorithm. No pose fusion, shooting gate or distance estimation is added.
 
-## Sources and field mapping
+Both Robot owners initialize and stop the camera. Auto cleanup stops it even before START. Alimzhan debug shows offset, tag visibility and frame age; D-pad up resets learned offset along with pose reset. Manual target locking excludes the learned correction to avoid applying it twice. New OpMode initialization resets the offset; switching clusters retains it as in the reference.
 
-- [FIRST BIOBUZZ Section 9, TU06, Figure 9-17](https://ftc-resources.firstinspires.org/ftc/game/manual-09)
-  defines red far 30–33, red audience 34–37, blue audience 38–41, blue far 42–45.
-- [Official Limelight FTC programming](https://docs.limelightvision.io/docs/docs-limelight/apis/ftc-programming)
-  documents pipeline switching, polling, per-tag angular results and staleness.
-- [Official visual servoing tutorial](https://docs.limelightvision.io/docs/docs-limelight/tutorials/tutorial-aiming-with-visual-servoing)
-  describes proportional angular-error control and warns about excessive gain.
-- Implementation is checked against the installed FTC Hardware 12.0.0 SDK sources.
+Validation: isolated JUnit checks cover new-frame and settling gates, hold-on-loss, reset, deadband, saturation and hive tag selection. Full compilation currently has four pre-existing errors in auto_new: missing RegShooter, selectWestFieldTarget and setTargetTPS. No robot deployment or physical validation has been performed.
 
-This project's field axes place red at Y=58 and blue at Y=81. Rotating the
-manual diagram into those axes gives west = far, east = audience:
+## Review fixes (2026-11-28)
 
-| Existing target (inches) | Cell | Tags |
-| --- | --- | --- |
-| (53, 58) | redFar | 30–33 |
-| (85, 58) | redAudience | 34–37 |
-| (53, 81) | blueFar | 42–45 |
-| (85, 81) | blueAudience | 38–41 |
+Servo mapping is centered at 0.5, retaining the current 330-degree full-scale calibration and the user-confirmed mechanical angle bounds 15–345 degrees (backward reference labeled 180). With the existing half-degree endpoint margins, effective travel is 15.5–344.5 degrees, or +/-164.5 degrees. Check the midpoint's physical backward alignment before use; full-scale calibration and midpoint still require hardware verification. The range calibration OpMode remains available. Out-of-range status is exposed in TeleOp telemetry.
 
-Verify this inferred axis orientation against the real field during setup.
+Desired aim and vision target are now separate inputs to face(). The bearing difference, manual trim and heading lead are removed from the visual error so vision retains intentional aim bias. Settling is checked against the newly requested corrected angle, and unreachable requests cannot update the learned correction. TeleOp refreshes localization before user control/aim calculation and updates mechanisms afterward, once each loop.
 
-## Behavior and setup
-
-Both Robot variants own one Limelight, initialize it after their hardware,
-poll it before Turret, and stop it on shutdown. In scheduler-driven autonomous,
-Limelight is constructed/registered before Turret; TeleOp uses Robot.periodic().
-Turret.face() selects the cell from the intended field target. Tracking TeleOps
-pass the original cell target separately from the driver's adjusted aim point.
-Manual addYaw()/setYaw() suspend correction; automatic face() resumes it.
-Existing nudge offsets and turn lead are included in the desired camera error.
-Servo calibration OpModes intentionally retain their raw fixed-position commands.
-
-Configure a Limelight3A named `limelight` in the robot configuration. A missing
-device or absent target leaves normal pose aiming available. In the camera web
-interface configure the selected pipeline (default 1) for AprilTags, family
-36h11 and the manual's 3.25-inch tag size (0.08255 m). Correct camera orientation
-so horizontal angular offsets describe left/right turret error. Full 3D is
-required for both height estimates and partial-cluster aiming: the correction
-uses each tag's horizontal angle and positive camera-space Z depth. Tags with
-missing/invalid depth are skipped. It does not use botPose or fixed robot-to-camera extrinsics.
-
-Dashboard settings under `VisionAimTrim`:
-
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| enabled | true | Enables automatic vision trim |
-| maxTrimDegrees | 8 | Maximum total correction from pose aiming |
-| maxRateDegreesPerSecond | 6 | Maximum correction acquisition speed |
-| gainPerSecond | 2 | Error response; unverified starting value |
-| maxErrorDegrees | 15 | Rejects grossly misaligned observations |
-| deadbandDegrees | 0.3 | Holds trim near the desired aim |
-| minimumTags | 1 | Uses any nonempty set of usable tags from the selected cell |
-| aimOffsetDegrees | 0 | Additional desired aim offset, positive CCW |
-
-`Limelight.maximumFrameAgeMs` defaults to 100 ms and includes capture/pipeline
-latency, receipt staleness, and time since the camera timestamp last changed.
-Frozen frames cannot keep correcting even if the camera continues returning
-the same result over HTTP. `Limelight.pipeline` is selected during init; changing
-it requires reinitializing the OpMode. Target changes invalidate old measurements.
-Tipped detection now counts distinct images, rather than repeated polling of
-the same image. The flag still latches until reset, as in MLP.
-
-The confirmed physical mounting is 180 degrees roll and exactly 45 degrees
-upward pitch, rotating with the turret. `Limelight.cameraPitch` defaults to 45
-degrees and currently affects only height/tipped detection. `cameraHeight=10.986`
-inches above the floor is user-reported, interpreted as the camera lens-center
-height. `splitHeight=40` remains a legacy placeholder. These settings do not
-enter the horizontal correction math.
-Camera-relative correction is the negative of the estimated cell-center tx in
-degrees; physical roll/pitch compensation and verification of angle signs after
-image orientation are pending.
-
-### Mounting offsets in Dashboard
-
-The following settings are exposed under `Limelight`. The user-reported camera
-forward offset from the turret pivot is 5.101 inches. The corrected camera height
-is 10.986 inches above the floor. The user clarified the turret pivot is 188 mm
-above the floor (178 mm above the robot bottom), replacing the earlier 188.99 mm
-report. With floor Z=0, `turretUpOffsetInches=188.0/25.4` (about 7.401574803
-inches) and `cameraUpOffsetInches=3.584425197` (camera above the pivot). The camera
-is confirmed directly in front of the pivot (`cameraLeftOffsetInches=0`),
-and camera/shooter headings are aligned with turret forward (both yaw offsets
-zero). The user now confirms the turret pivot is directly above the midpoint of
-the four mecanum wheel centers, replacing the earlier report that it was behind
-the robot origin. `turretForwardOffsetInches=0` and `turretLeftOffsetInches=0`
-therefore assume this wheel-layout center is the localization reference. The user
-believes the odometry pod offsets use that center; this reference has not been
-physically verified. Shooter positional offsets remain unmeasured zero
-placeholders. These new fields are stored
-calibration settings only: they are not yet applied to aiming, distance estimates
-or localization.
-
-| Settings | Reference frame / units |
-| --- | --- |
-| `turretForwardOffsetInches`, `turretLeftOffsetInches`, `turretUpOffsetInches` | Robot pose origin to turret pivot; chassis forward/left/up, inches |
-| `cameraForwardOffsetInches`, `cameraLeftOffsetInches`, `cameraUpOffsetInches` | Turret pivot to camera optical center; turret forward/left/up, inches |
-| `shooterForwardOffsetInches`, `shooterLeftOffsetInches`, `shooterUpOffsetInches` | Turret pivot to a chosen point on the firing axis (for example, muzzle center); turret forward/left/up, inches |
-| `cameraRollDegrees` | Physical optical-axis roll; defaults to 180 degrees |
-| `cameraYawOffsetDegrees` | Camera heading relative to turret forward; positive CCW, defaults to 0 degrees |
-| `shooterYawOffsetDegrees` | Firing-axis heading relative to turret forward; positive CCW, defaults to 0 degrees |
-
-Turret forward means the turret's zero-yaw direction, rotating with the assembly;
-turret left is 90 degrees CCW from that direction. Chassis forward/left are fixed
-to the robot. Camera up offset is relative to the pivot, whereas `cameraHeight`
-is absolute height above the floor. Physical roll describes the mount and must
-not be reapplied blindly after a pipeline image rotation. Dashboard edits are
-runtime settings; save measured values in source when calibration is complete.
-
-## Verification and robot check
-
-Host unit tests cover repeated frames, convergence for a biased turret, trim
-and rate bounds, loss/gross-error fallback, disable/reset, invalid settings,
-mechanical-limit windup and all four target mappings. A disposable Java harness
-also exercises the actual Limelight and Turret classes against simulated SDK
-hardware: frame validation, frozen timestamps, partial/wrong tags, servo output,
-manual/nudge/heading-lead behavior, limits, tipping and lifecycle cleanup.
-
-These checks cannot establish physical correction direction, camera calibration
-or stability. Verify them with a stationary robot and one or more tags from the selected cell visible. Check `Limelight cell`, tags, error, frame age and `Vision trim`
-in telemetry; a small aiming error should shrink as trim changes. Dashboard's
-`VisionAimTrim.enabled=false` restores pose-only aiming.
-
-Dropping below minimumTags, losing/staling the target, disabling correction or
-changing cells clears the trim immediately. This can return up to 8 degrees
-toward pose aiming; intermittent tag visibility can produce reacquisition motion.
-Partial-cluster correction estimates the goal center from tag offsets rather
-than averaging raw tag angles. This compensates observed aim error; it does not
-diagnose slipping hardware, servo calibration or odometry drift.
-
-
-## Partial-cluster aiming (2026-11-27)
-
-Compared the local `kiroshi_reg` implementation in
-`subsystems/LimelightSubsystem.java#getHiveTx`,
-`utils/Field/AprilTagClusters.java`, and `Commands/TurretCommands/TurretHybridCommand.java`.
-As requested, use any visible usable tags from the **selected goal**, including
-just one. Keep rejecting other goals so their detections do not pull the turret
-away from the intended target.
-
-For each matching tag, convert camera-space Z to inches and estimate
-`centerTx = tagTx - degrees(atan2(tagOffsetInches, cameraSpaceZInches))`.
-Average `-centerTx` for the turret correction, retaining this robot's sign.
-The reference's offsets are -6.5, -2.75, +2.75, +6.5 inches for tag orders
-34/35/36/37 and 38/39/40/41, and reversed orders 33/32/31/30 and 45/44/43/42.
-These are ported reference field geometry, not newly measured calibration.
-The formula matches the reference's approximation; oblique views and this
-camera's physical orientation still need hardware validation.
-
-The reference also gates updates by chassis velocity and turret settling;
-those controls were not ported. The existing bounded/rate-limited trim,
-100 ms freshness limit, pipeline checks, manual override and mechanical limits
-remain. The reference uses 200 ms; this change does not increase that age limit.
-
-`Limelight tags` now counts matching tags with usable finite angles and positive
-3D depth. Telemetry also displays `Limelight minimum tags`. Its source default
-is 1; check that a live Dashboard setting has not retained an override of 4.
-Configure the AprilTag pipeline for 3D pose output and the correct tag size.
-Reinitialize after deploying the change.
-
-New host tests check every tag in all four goal clusters, single-tag and partial
-center estimates, the reversed far-goal ordering, wrong-goal rejection, and
-invalid/nonpositive depth and angle rejection. Existing trim tests continue to
-cover loss/error fallback behavior at the controller layer. No hardware test or
-USB disconnection fix is implied by these checks.
+Backward midpoint reference: hardware confirmation shows servo 0.5 points backward and increasing position turns counterclockwise. face() subtracts pi from the robot-relative field bearing; manual target reconstruction adds pi back. Reset remains (135, 9, 90 degrees), matching the reported robot front facing +Y. Full-scale gearing remains 395.102 degrees; the roughly 240-degree measured 0.2-to-0.8 sweep supports its direction and approximate scale.

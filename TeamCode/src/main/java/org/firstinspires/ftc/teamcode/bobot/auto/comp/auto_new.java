@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode.bobot.auto.comp;
 
-import static org.firstinspires.ftc.teamcode.bobot.auto.commands.RobotNewCommands.*;
+import static org.firstinspires.ftc.teamcode.bobot.auto.commands.RobotCommands.*;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
@@ -13,37 +13,36 @@ import com.pedropathing.paths.interpolator.Interpolator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
-import com.seattlesolvers.solverslib.command.InstantCommand;
+import com.seattlesolvers.solverslib.command.ConditionalCommand;
 import com.seattlesolvers.solverslib.command.ParallelCommandGroup;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
 import com.seattlesolvers.solverslib.command.WaitCommand;
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand;
 
 import org.firstinspires.ftc.teamcode.bobot.RobotNew;
-import org.firstinspires.ftc.teamcode.bobot.auto.commands.RobotNewCommands;
+import org.firstinspires.ftc.teamcode.bobot.util.ShooterDistance;
+import org.firstinspires.ftc.teamcode.bobot.auto.commands.RobotCommands;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
-import org.firstinspires.ftc.teamcode.bobot.util.RegShooter;
 
-@Autonomous(name = "Alikh auto new")
+@Autonomous(name = "Auto 2 Tips")
 public class auto_new extends LinearOpMode {
     private RobotNew r;
     private Follower follower;
-    private double shooterTPSOffset = 27;
 
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
     private final Pose start = poseFactory.of(55.5, 7.8, 180);
-    private final Pose shootpreload = poseFactory.of(55.5, 18, 180);
+    private final Pose shootpreload = poseFactory.of(55.5, 20, 180);
     private final Pose shootpreloadgarden = poseFactory.of(8.5, 8.5, 270);
     private final Pose shootpreloadgardenControl1 = poseFactory.of(36, 48, 0);
     private final Pose shootpreloadgardenControl2 = poseFactory.of(8, 32, 0);
     private final Pose shootpreloadgardenControl3 = poseFactory.of(16, 16, 0);
-    private final Pose shootgardenStart = poseFactory.of(7.5, 8, 270);
+    private final Pose shootgardenStart = poseFactory.of(7.5, 8.5, 270);
     private final Pose shootgarden = poseFactory.of(47.5, 121.5, 90);
     private final Pose shootgardenControl1 = poseFactory.of(28, 18, 0);
     private final Pose shootgardenControl2 = poseFactory.of(16, 122, 0);
     private final Pose takeflower1Start = poseFactory.of(47.5, 121.5, 90);
-    private final Pose takeflower1 = poseFactory.of(47.5, 128.6, 90);
+    private final Pose takeflower1 = poseFactory.of(47.5, 126, 90);
     private final Pose moveflower1 = poseFactory.of(47.5, 120, 90);
     private final Pose back1shoot = poseFactory.of(47.5, 120.5, 90);
     private final Pose goflower2Start = poseFactory.of(47.5, 115, 90);
@@ -62,15 +61,13 @@ public class auto_new extends LinearOpMode {
     private final Pose parkSegment2End = poseFactory.of(8.5, 122.5, 0);
     private SequentialCommandGroup autoRoutine() {
         return new SequentialCommandGroup(
-                nudgee(r, -0.3),
-                new WaitCommand(200),
+                new WaitCommand(120),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootpreload()),
                         spinUp(r)
-                        ),
+                ),
                 new WaitCommand(100),
                 shoot(r),
-                new InstantCommand(() -> shooterTPSOffset = 30),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootpreloadgarden()),
                         intake(r),
@@ -142,7 +139,7 @@ public class auto_new extends LinearOpMode {
                 new WaitCommand(200),
                 shoot(r),
                 new FollowPathCommand(follower, park()),
-                RobotNewCommands.idle(r)
+                RobotCommands.idle(r)
         );
     }
 
@@ -152,7 +149,6 @@ public class auto_new extends LinearOpMode {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         try {
             r.init(hardwareMap, start);
-            r.rgb.init(hardwareMap);
             follower = r.drive.getFollower();
             follower.update();
 
@@ -169,10 +165,8 @@ public class auto_new extends LinearOpMode {
                 while (opModeIsActive()) {
                     follower.update();
                     Pose pose = follower.pose();
-                    Pose target = Turret.selectWestFieldTarget(pose);
-                    double defaultTPS = RegShooter.velForDist(
-                            pose.distance(target), RobotNew.ShooterNew.baseVel);
-                    r.shooter.setTargetTPS(defaultTPS > 0 ? defaultTPS + shooterTPSOffset : 0);
+                    Pose target = Turret.selectFieldTarget(pose);
+                    r.shooter.setTargetTPS(ShooterDistance.targetTPS(pose.distance(target)));
                     r.turret.face(target, pose, follower.velocity().omega);
                     scheduler.run();
                     r.rgb.periodic();
@@ -181,6 +175,9 @@ public class auto_new extends LinearOpMode {
                     if (now - lastTelemetryNanos >= 100_000_000L) {
                         lastTelemetryNanos = now;
                         telemetry.addData("Pose", pose);
+                        telemetry.addData("Vision offset (deg)", r.turret.getVisionOffsetDegrees());
+                        telemetry.addData("Vision tags", r.turret.seesTags());
+                        telemetry.addData("Vision frame age (ms)", r.limelight.getFrameAgeMs());
                         telemetry.addData("Distance to goal (in)", "%.2f", pose.distance(target));
                         telemetry.addData("Shooter TPS", "%.0f / %.0f",
                                 r.shooter.getVel(), r.shooter.getActiveTargetTPS());
@@ -208,6 +205,10 @@ public class auto_new extends LinearOpMode {
 
     public Path shootpreload() {
         return Paths.line(start, shootpreload).linear(start, shootpreload);
+    }
+
+    public Path path1() {
+        return Paths.line(shootpreloadgarden, shootpreload).heading(Interpolator.piecewise().until(0.25, Interpolator.constant(270)).until(1, Interpolator.linear(270, 180)));
     }
 
     public Path shootpreloadgarden() {

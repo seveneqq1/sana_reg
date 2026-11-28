@@ -19,12 +19,15 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
 
+            // Ignore merged PRs
             if (pr.merged) return;
 
             const labels = pr.labels.map(l => l.name);
 
+            // Only act if it was previously reopened once
             if (!labels.includes('reopen-used')) return;
 
+            // Mark auto-reopen as permanently disabled
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,

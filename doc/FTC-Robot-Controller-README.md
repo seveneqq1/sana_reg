@@ -205,8 +205,6 @@ voltage was not updated on driver station if OpMode did not send any telemetry.
   as though nothing happened until the robot is stopped, at which point, if clearGlobalErrorMsg() has not 
   been called the message will appear on the Driver Station and a restart will be required.
   Addresses issue [1381](https://github.com/FIRST-Tech-Challenge/FtcRobotController/issues/1381)
-* Fixes getLatestResult in Limelight3A so if the Limelight hasn't provided data yet, it still returns an LLResult but valid will be false
-  * If you previously used to check and see if this was `null` to see if the Limelight had been contacted, you now need to use `isValid()` on the result.  That is because now it always returns an LLResult even before it talks to the Limelight, but if it doesn't have valid data, the `isValid()` will be `false`.
 * Changed all omni samples to use front_left_drive, front_right_drive, back_left_drive, back_right_drive
   * This is only breaking for you if you copy one of the changed samples to your own project and expect to use the same robot configuration as before.
 
@@ -244,7 +242,6 @@ voltage was not updated on driver station if OpMode did not send any telemetry.
 ## Version 10.2 (20250121-174034)
 
 ### Enhancements
-* Add ability to upload the pipeline for Limelight3A which allows teams to version control their limelight pipelines.
 
 
 ### Bug Fixes
@@ -308,7 +305,6 @@ voltage was not updated on driver station if OpMode did not send any telemetry.
 * In the Blocks editor: a \n in the ExportToBlocks annotation's comment field is displayed as a line break.
 * Telemetry has new method setNumDecimalPlaces
 * Telemetry now formats doubles and floats (not inside objects, just by themselves)
-* Adds support for the Limelight 3A.
 * Adds initial support for the REV Servo Hub
   * Both the Robot Controller and Driver Station need to be updated to version 10.0 in order for Servo Hubs to be
     configurable as Servo Hubs. If the app on either device is outdated, the Servo Hub will show up as an Expansion Hub,

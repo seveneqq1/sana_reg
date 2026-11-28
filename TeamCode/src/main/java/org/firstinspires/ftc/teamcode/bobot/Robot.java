@@ -37,11 +37,11 @@ public class Robot {
         intake.init(hw);
         shooter.init(hw);
         shooter.turnOff();
+        limelight.init(hw);
         turret.init(hw, limelight);
         turret.off();
         flower.init(hw);
         flower.closeFlower();
-        limelight.init(hw);
     }
     public void turnOn() {
         shooter.turnOn();
@@ -62,7 +62,6 @@ public class Robot {
         drive.periodic();
         intake.periodic();
         shooter.periodic();
-        limelight.periodic();
         turret.periodic();
     }
 

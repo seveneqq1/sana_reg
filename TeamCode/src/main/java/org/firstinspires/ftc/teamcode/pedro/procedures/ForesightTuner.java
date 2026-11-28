@@ -137,15 +137,25 @@ public class ForesightTuner extends Procedure {
                 "    );");
     }
 
+    /**
+     * Runs one step. If it fails, the tuning stops with the step's name and reason instead of the
+     * exception ending the procedure without a message.
+     */
     private <T> T step(TuningOpMode<T> opMode) throws InterruptedException {
         try {
             return runOpMode(opMode);
         } catch (RuntimeException e) {
             abort(opMode.name + " failed: " + e.getMessage());
-            throw e;
+            throw e; // not reached: abort() throws
         }
     }
 
+    /**
+     * A measured value that later steps drive with, or that goes into the generated config. Stops the
+     * tuning if it is NaN or infinite, or not positive where it must be. A NaN heading kP, for example,
+     * made every power the braking steps sent NaN; CachedMotor ignores NaN powers, so the motors kept
+     * their last power and the robot drove off.
+     */
     private double measured(String step, String name, double value, boolean positive) throws InterruptedException {
         if (!Double.isFinite(value) || (positive && value <= 0)) {
             abort(step + " measured " + name + " = " + value + ", which can't be used. Run the tuner again.");
@@ -463,12 +473,12 @@ class HeadingBraking extends TuningOpMode<List<Double>> {
     Function<HardwareMap, Drivetrain> drivetrainFunction;
 
     private static double[] POWERS;
-    public static double MAX_BRAKE_TIME = 3;
+    public static double MAX_BRAKE_TIME = 3; //seconds, the robot shouldn't take longer than this to brake
 
     public static int trials = 12;
     public static double maxPower = 1;
     public static double minPower = 0.2;
-    public static double bias = 1.5;
+    public static double bias = 1.5; // how much it favors doing trials with higher powers
     public static double brakingPower = 0.001;
 
     private final ElapsedTime timer = new ElapsedTime();
@@ -483,6 +493,7 @@ class HeadingBraking extends TuningOpMode<List<Double>> {
     private double measuredVelocity;
     private double totalHeading;
     private double previousHeading;
+//    private VoltageSensor voltageSensor;
 
     public HeadingBraking(Function<HardwareMap, Localizer> localizerFunction, Function<HardwareMap, Drivetrain> drivetrainFunction) {
         super("Heading Braking", "A tuner for finding the Heading Braking Coefficients. The robot will turn back at forth at various speed levels.", false);
@@ -519,6 +530,12 @@ class HeadingBraking extends TuningOpMode<List<Double>> {
             if (iteration < POWERS.length) {
                 power = POWERS[iteration];
             }
+
+//            if (state != State.DONE) {
+//                double voltage = voltageSensor.getVoltage();
+//                double duty = state == State.BRAKE ? -brakingPower * direction: power * direction;
+//                double appliedVoltage = voltage * duty;
+//            }
 
             switch (state) {
                 case DRIVE: {
@@ -563,6 +580,7 @@ class HeadingBraking extends TuningOpMode<List<Double>> {
                 case DONE: {}
             }
         }
+
 
         return coefficients;
     }
@@ -705,7 +723,7 @@ class HeadingTuner extends TuningOpMode<Double> {
                 x.toArray(new Double[0]),
                 y.toArray(new Double[0])
         );
-
+        // With fewer than two samples between 10% and 80% the slope is NaN, which `== 0` let through.
         if (x.size() < 2 || !Double.isFinite(linReg[1]) || linReg[1] >= 0) {
             throw new IllegalArgumentException("Failed calibration: only " + x.size()
                     + " samples while the robot sped up.");
@@ -730,9 +748,9 @@ class ForwardBraking extends TuningOpMode<List<Double>> {
     public double brakingPower = 0.001;
     public double distance;
     public double IDLE_SECONDS = 1;
-
+    /** Stops the robot if it gets this many inches past the test's ends. */
     public double OVERRUN = 24;
-
+    /** Stops the robot if it drifts this many inches across the test's direction. */
     public double DRIFT = 48;
 
     private final ElapsedTime timer = new ElapsedTime();
@@ -837,6 +855,7 @@ class ForwardBraking extends TuningOpMode<List<Double>> {
         return Utils.clamp(headingKP * error, -0.3, 1.0) / 2;
     }
 
+
     private void drive(Drivetrain drivetrain, Localizer localizer) {
         drivetrain.drive(new DrivePowers(power * direction, 0.0, getHeadingPower(localizer)), false);
     }
@@ -907,9 +926,9 @@ class StrafeBraking extends TuningOpMode<List<Double>> {
     public double brakingPower = 0.001;
     public double distance;
     public double IDLE_SECONDS = 1;
-
+    /** Stops the robot if it gets this many inches past the test's ends. */
     public double OVERRUN = 24;
-
+    /** Stops the robot if it drifts this many inches across the test's direction. */
     public double DRIFT = 48;
 
     private final ElapsedTime timer = new ElapsedTime();
@@ -1150,6 +1169,7 @@ class ForwardTranslational extends TuningOpMode<List<Double>> {
         double kP_large = calculatekP(ALPHA_LARGE);
         double kP_small = calculatekP(ALPHA_SMALL);
 
+        //  kP_large, kP_small, coast kV, and brake kV (scaled by aggressiveness factor)
         return List.of(kP_large, kP_small, kV, kV * VEL_AGGRESSIVENESS);
     }
 
@@ -1185,7 +1205,7 @@ class ForwardTranslational extends TuningOpMode<List<Double>> {
                 x.toArray(new Double[0]),
                 y.toArray(new Double[0])
         );
-
+        // With fewer than two samples between 10% and 80% the slope is NaN, which `== 0` let through.
         if (x.size() < 2 || !Double.isFinite(linReg[1]) || linReg[1] >= 0) {
             throw new IllegalArgumentException("Failed calibration: only " + x.size()
                     + " samples while the robot sped up.");
@@ -1308,7 +1328,7 @@ class StrafeTranslational extends TuningOpMode<List<Double>> {
                 x.toArray(new Double[0]),
                 y.toArray(new Double[0])
         );
-
+        // With fewer than two samples between 10% and 80% the slope is NaN, which `== 0` let through.
         if (x.size() < 2 || !Double.isFinite(linReg[1]) || linReg[1] >= 0) {
             throw new IllegalArgumentException("Failed calibration: only " + x.size()
                     + " samples while the robot sped up.");

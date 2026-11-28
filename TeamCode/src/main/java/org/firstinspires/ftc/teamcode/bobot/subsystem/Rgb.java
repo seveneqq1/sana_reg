@@ -3,7 +3,6 @@ package org.firstinspires.ftc.teamcode.bobot.subsystem;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
-/** Servo-controlled RGB indicator; shot completion is a timed driver indication. */
 public class Rgb {
     private Servo servo;
     private long shootPressedAt = -1;

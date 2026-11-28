@@ -32,7 +32,7 @@ public class Drive extends SubsystemBase {
     public void init(HardwareMap hw) {
         f = Constants.create(hw);
         if (f != null) return;
-
+        //53 58 //85 58 //53 81 //85 81 coordy haivov
         Motor fl = new Motor(hw, "frontleft");
         Motor fr = new Motor(hw, "frontright");
         Motor bl = new Motor(hw, "backleft");
@@ -55,7 +55,7 @@ public class Drive extends SubsystemBase {
     }
 
     public void resetPos() {
-        setPose(new Pose(134.8, 8.8, Math.PI / 2));
+        setPose(new Pose(135, 9, Math.PI / 2));
     }
 
     private void setPose(Pose pose) {

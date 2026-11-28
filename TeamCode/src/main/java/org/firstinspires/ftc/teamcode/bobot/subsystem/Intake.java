@@ -7,16 +7,15 @@ import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
+import org.firstinspires.ftc.teamcode.bobot.util.SensorReading;
 
 @Config
 public class Intake extends SubsystemBase {
     private MotorEx intake;
     private MotorEx transfer;
+    private final SensorReading transferCurrentReading = new SensorReading();
     private boolean transferCutoff;
     private boolean outtaking;
-    private boolean transferCurrentSampled;
-    private int transferCurrentLoops;
-    private double transferCurrentMilliamps;
     public static double intakeShoot = 0.36, transShoot = 0.88;
     public static double transferCurrentLimitMilliamps = 6500.0;
 
@@ -31,8 +30,7 @@ public class Intake extends SubsystemBase {
         transfer.stopMotor();
         transferCutoff = false;
         outtaking = false;
-        transferCurrentSampled = false;
-        transferCurrentLoops = 0;
+        transferCurrentReading.reset();
         intake.setCachingTolerance(0.05);
         transfer.setCachingTolerance(0.05);
     }
@@ -55,23 +53,15 @@ public class Intake extends SubsystemBase {
             transferCutoff = true;
             transfer.set(0.0);
         }
-        // Share one current sample between rumble and cutoff for five loops.
-        if (++transferCurrentLoops >= 5) {
-            transferCurrentSampled = false;
-            transferCurrentLoops = 0;
-        }
+    }
+
+    public double getTransferCurrentMilliamps() {
+        return transfer == null ? 0 : transferCurrentReading.get(
+                () -> transfer.getCurrent(CurrentUnit.MILLIAMPS));
     }
 
     public void spinIn() {
         setPower(1.0, 1.0);
-    }
-
-    public double getTransferCurrentMilliamps() {
-        if (!transferCurrentSampled) {
-            transferCurrentMilliamps = transfer.getCurrent(CurrentUnit.MILLIAMPS);
-            transferCurrentSampled = true;
-        }
-        return transferCurrentMilliamps;
     }
 
     public void spinOut() {

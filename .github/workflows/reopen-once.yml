@@ -31,13 +31,16 @@ jobs:
 
             const labels = pr.data.labels.map(l => l.name);
 
+            // Only PR author may use this
             if (comment.user.login !== pr.data.user.login) {
               return;
             }
 
+            // Must be closed and labeled mistake-pr
             if (pr.data.state !== 'closed') return;
             if (!labels.includes('mistake-pr')) return;
 
+            // Auto-reopen already disabled
             if (labels.includes('reopen-used') || labels.includes('reopen-locked')) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -50,6 +53,7 @@ jobs:
               return;
             }
 
+            // Mark reopen as used FIRST (prevents race)
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,

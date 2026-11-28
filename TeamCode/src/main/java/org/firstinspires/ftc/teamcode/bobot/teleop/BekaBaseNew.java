@@ -17,8 +17,6 @@ public class BekaBaseNew extends OpMode {
     protected GamepadEx first_driver, second_driver;
     protected RobotNew r;
     protected double deltaTime;
-    protected double driveLoopMs, controlsLoopMs, mechanismsLoopMs, loopWorkMs;
-    protected double peakDriveMs, peakControlsMs, peakMechanismsMs, peakLoopWorkMs;
 
     private final ElapsedTime deltaTimer = new ElapsedTime();
     private final Map<LynxModule, LynxModule.BulkCachingMode> previousCacheModes =
@@ -61,8 +59,6 @@ public class BekaBaseNew extends OpMode {
 
         clearBulkCaches();
         deltaTimer.reset();
-        driveLoopMs = controlsLoopMs = mechanismsLoopMs = loopWorkMs = 0;
-        peakDriveMs = peakControlsMs = peakMechanismsMs = peakLoopWorkMs = 0;
 
         r.shooter.setStandby(false);
         r.shooter.turnOn();
@@ -75,7 +71,6 @@ public class BekaBaseNew extends OpMode {
         deltaTime = deltaTimer.seconds();
         deltaTimer.reset();
 
-        long workStart = System.nanoTime();
         clearBulkCaches();
 
         first_driver.readButtons();
@@ -86,23 +81,9 @@ public class BekaBaseNew extends OpMode {
 
         r.shooter.setStandby(false);
 
-        long driveStart = System.nanoTime();
         r.drive.periodic();
-        long controlsStart = System.nanoTime();
         onUpdate();
-        long mechanismsStart = System.nanoTime();
         r.periodicAfterDriveUpdate();
-        long workEnd = System.nanoTime();
-
-        // Publish a complete previous-loop sample; onUpdate() includes telemetry work.
-        driveLoopMs = (controlsStart - driveStart) * 1e-6;
-        controlsLoopMs = (mechanismsStart - controlsStart) * 1e-6;
-        mechanismsLoopMs = (workEnd - mechanismsStart) * 1e-6;
-        loopWorkMs = (workEnd - workStart) * 1e-6;
-        peakDriveMs = Math.max(peakDriveMs, driveLoopMs);
-        peakControlsMs = Math.max(peakControlsMs, controlsLoopMs);
-        peakMechanismsMs = Math.max(peakMechanismsMs, mechanismsLoopMs);
-        peakLoopWorkMs = Math.max(peakLoopWorkMs, loopWorkMs);
     }
 
     @Override
@@ -118,7 +99,7 @@ public class BekaBaseNew extends OpMode {
                 }
             }
         } finally {
-            if (r != null) r.limelight.stop();
+            gamepad1.stopRumble();
             robotInitialized = false;
 
             for (Map.Entry<LynxModule, LynxModule.BulkCachingMode> entry

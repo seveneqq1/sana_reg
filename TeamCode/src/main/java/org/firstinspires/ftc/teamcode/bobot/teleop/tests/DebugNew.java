@@ -1,3 +1,4 @@
+
 package org.firstinspires.ftc.teamcode.bobot.teleop.tests;
 
 import com.acmerobotics.dashboard.FtcDashboard;
@@ -8,18 +9,16 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 
+import org.firstinspires.ftc.teamcode.bobot.util.ShooterDistance;
 import org.firstinspires.ftc.teamcode.bobot.subsystem.Turret;
-import org.firstinspires.ftc.teamcode.bobot.subsystem.Rgb;
-import org.firstinspires.ftc.teamcode.bobot.RobotNew;
+import org.firstinspires.ftc.teamcode.bobot.util.AprilTagCluster;
 import org.firstinspires.ftc.teamcode.bobot.teleop.BekaBaseNew;
-import org.firstinspires.ftc.teamcode.bobot.util.RegShooter;
 
 @Config
 @TeleOp(name = "Alimzhan debug")
 public class DebugNew extends BekaBaseNew {
 
-    public static double targetX = 72, targetY = 62;
-    private long lastTelemetryNanos;
+    public static double targetX = 50, targetY = 50;
     public static double slowMultiplier = 0.6;
     public static double manualTurretDegreesPerSecond = 120;
     public static double shooterTolerance = 120;
@@ -29,49 +28,63 @@ public class DebugNew extends BekaBaseNew {
 
     private enum Mode { IDLE, INTAKE, OUTTAKE, SHOOT }
 
-    private final Rgb rgb = new Rgb();
     private final ElapsedTime feedTimer = new ElapsedTime();
     private Mode mode = Mode.IDLE;
     private Pose target;
     private Pose correctedTarget;
+    private boolean blueAlliance;
+    private boolean distanceBasedShooting;
     private boolean tracking = true;
     private boolean manualLastLoop;
     private boolean feeding;
     private boolean compensationTriggered = false;
     private double previousHeading;
+    private double min_Volts = 100;
     private boolean transferOverloaded;
     private long lastRumbleNanos;
-    private boolean distanceBasedShooting;
 
     @Override
     protected void onStart() {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
-        rgb.init(hardwareMap);
-        transferOverloaded = false;
-        lastRumbleNanos = 0;
         r.turnOn();
         r.shooter.turnOn();
         r.shooter.setStandby(false);
         r.shooter.setFeeding(false);
+        blueAlliance = false;
+        r.turret.setVisionCluster(AprilTagCluster.RED_ALLIANCE);
         initializeTracking();
         distanceBasedShooting = false;
-        updateShooterTarget(r.drive.getPose().distance(target));
-        lastTelemetryNanos = System.nanoTime() - 100_000_000L;
+        r.shooter.setTargetTPS(getShooterTargetTPS(
+                r.drive.getPose().distance(selectFieldTarget(r.drive.getPose()))));
+        transferOverloaded = false;
+        lastRumbleNanos = 0;
     }
 
     @Override
     protected void onUpdate() {
-        if (pressed(GamepadKeys.Button.DPAD_UP)) resetTracking();
         if (second_driver.wasJustPressed(GamepadKeys.Button.DPAD_UP)) {
             distanceBasedShooting = !distanceBasedShooting;
         }
+        if (second_driver.wasJustPressed(GamepadKeys.Button.Y)) {
+            blueAlliance = !blueAlliance;
+            r.turret.setVisionCluster(blueAlliance
+                    ? AprilTagCluster.BLUE_ALLIANCE : AprilTagCluster.RED_ALLIANCE);
+            correctedTarget = null;
+        }
+        if (pressed(GamepadKeys.Button.DPAD_UP)) resetTracking();
 
         Pose pose = r.drive.getPose();
+
+        Pose fieldTarget = selectFieldTarget(pose);
+        targetX = fieldTarget.x();
+        targetY = fieldTarget.y();
 
         if (target.x() != targetX || target.y() != targetY) {
             target = new Pose(targetX, targetY, 0);
             correctedTarget = null;
         }
+
+        r.shooter.setTargetTPS(getShooterTargetTPS(pose.distance(target)));
 
         double headingRate = deltaTime > 0
                 ? Turret.normalizeAngle(pose.heading() - previousHeading) / deltaTime : 0;
@@ -79,67 +92,73 @@ public class DebugNew extends BekaBaseNew {
         previousHeading = pose.heading();
         updateTurret(pose, headingRate);
 
-        double distanceToGoal = pose.distance(target);
-        updateShooterTarget(distanceToGoal);
         double velocity = Math.abs(r.shooter.getVel());
 
         updateIntake(velocity);
-        rgb.periodic();
         updateDrive();
 
         boolean overloaded = r.intake.getTransferCurrentMilliamps() > 4000.0;
-        long rumbleNow = System.nanoTime();
+        long now = System.nanoTime();
         if (overloaded) {
-            if (!transferOverloaded || rumbleNow - lastRumbleNanos >= 100_000_000L) {
+            if (!transferOverloaded || now - lastRumbleNanos >= 100_000_000L) {
                 gamepad1.rumble(1.0, 1.0, 150);
-                lastRumbleNanos = rumbleNow;
+                lastRumbleNanos = now;
             }
         } else if (transferOverloaded) {
             gamepad1.stopRumble();
         }
         transferOverloaded = overloaded;
+        double voltage = r.shooter.getVoltage();
+        min_Volts = Math.min(min_Volts, voltage);
 
-        long now = System.nanoTime();
-        if (now - lastTelemetryNanos >= 100_000_000L) {
-            lastTelemetryNanos = now;
-            double voltage = r.shooter.getVoltage();
+        telemetry.addData("Alliance (driver 2 Y)", blueAlliance ? "BLUE" : "RED");
+        telemetry.addData("Pose", pose);
+        telemetry.addData("Vision offset (deg)", r.turret.getVisionOffsetDegrees());
+        telemetry.addData("Vision tags", r.turret.seesTags());
+        telemetry.addData("Turret out of range", r.turret.isOutOfRange());
+        telemetry.addData("Vision frame age (ms)", r.limelight.getFrameAgeMs());
+        telemetry.addData("Goal", correctedTarget != null ? correctedTarget : target);
+        telemetry.addData("Shooting mode (driver 2 D-pad Up)",
+                isDistanceBasedShooting() ? "DISTANCE" : "FIXED");
+        telemetry.addData("Requested TPS", r.shooter.getTarget());
+        telemetry.addData("Distance to goal (in)", pose.distance(target));
+        telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getActiveTargetTPS());
+        telemetry.addData("Shooter Ready", isShooterReady(velocity, shooterTolerance));
+        telemetry.addData("Voltage", voltage);
+        telemetry.addData("Transfer current (mA)", r.intake.getTransferCurrentMilliamps());
+        telemetry.addData("Minimum Voltage", min_Volts);
+        telemetry.addData("dt", deltaTime);
+        telemetry.addData("freq", deltaTime > 0 ? 1 / deltaTime : 0);
+        telemetry.addData("shooter motor power", r.shooter.l.getPower());
+        telemetry.update();
+    }
 
-            telemetry.addData("Pose", pose);
-            telemetry.addData("Distance to goal (in)", "%.2f", distanceToGoal);
-            telemetry.addData("Shooting mode", distanceBasedShooting ? "DISTANCE" : "FIXED");
-            if (distanceBasedShooting) {
-                telemetry.addData("Distance equation", !RegShooter.calibrated
-                        ? "Not calibrated - using fixed TPS"
-                        : RegShooter.useQuadratic ? "QUADRATIC" : "LINEAR");
-            }
-            telemetry.addData("Shooter TPS", "%.0f / %.0f", velocity, r.shooter.getActiveTargetTPS());
-            telemetry.addData("Shooter Ready", isShooterReady(velocity, shooterTolerance));
-            telemetry.addData("Voltage", voltage);
-            telemetry.addData("Loop period (ms)", "%.2f", deltaTime * 1000);
-            telemetry.addData("Turret out of range", r.turret.isOutOfRange());
-            telemetry.update();
-        }
+    protected double getShooterTargetTPS(double distanceInches) {
+        return isDistanceBasedShooting() ? ShooterDistance.targetTPS(distanceInches)
+                : getFixedShooterTargetTPS();
+    }
+
+    protected boolean isDistanceBasedShooting() {
+        return distanceBasedShooting;
     }
 
     protected double getFixedShooterTargetTPS() {
-        return RobotNew.ShooterNew.baseVel;
+        return 1234;
     }
 
-    private void updateShooterTarget(double distanceInches) {
-        double fixedTPS = getFixedShooterTargetTPS();
-        r.shooter.setTargetTPS(distanceBasedShooting
-                ? RegShooter.velForDist(distanceInches, fixedTPS) : fixedTPS);
+    protected Pose selectFieldTarget(Pose pose) {
+        return Turret.selectFieldTarget(pose, false);
     }
 
     private void resetTracking() {
         r.drive.resetPos();
+        r.turret.resetVisionOffset();
         initializeTracking();
     }
 
     private void initializeTracking() {
         target = new Pose(targetX, targetY, 0);
         correctedTarget = null;
-        r.turret.resetAimTrim();
         previousHeading = r.drive.getPose().heading();
         tracking = true;
         manualLastLoop = false;
@@ -167,34 +186,34 @@ public class DebugNew extends BekaBaseNew {
             }
         }
 
-        boolean left = gamepad1.left_bumper || gamepad2.left_bumper;
-        boolean right = gamepad1.right_bumper || gamepad2.right_bumper;
+        boolean left = gamepad1.left_bumper;
+        boolean right = gamepad1.right_bumper;
         boolean manual = left != right;
 
         if (manual) {
             double step = Math.toRadians(manualTurretDegreesPerSecond * Math.min(deltaTime, 0.1));
             r.turret.addYaw(left ? step : -step);
         } else if (tracking) {
-            if (manualLastLoop) lockTargetHere(pose);
+            if (manualLastLoop) lockTargetHere(pose, headingRate);
             r.turret.face(correctedTarget != null ? correctedTarget : target, pose, headingRate, target);
         }
 
         manualLastLoop = manual && tracking;
     }
 
-    private void lockTargetHere(Pose pose) {
-        double angle = pose.heading() + r.turret.getYaw();
+    private void lockTargetHere(Pose pose, double headingRate) {
+        double angle = pose.heading() + Math.PI + headingRate * Turret.turnLeadSeconds + r.turret.getYaw()
+                + Math.toRadians(r.turret.getVisionOffsetDegrees());
         double sin = Math.sin(angle);
         double distance = Math.abs(sin) > 0.2 ? (target.y() - pose.y()) / sin : -1;
 
-        if (distance > 0) {
+        if (distance >= 1) {
             correctedTarget = new Pose(pose.x() + distance * Math.cos(angle), target.y(), 0);
         } else {
             distance = Math.max(1, Math.hypot(target.x() - pose.x(), target.y() - pose.y()));
             correctedTarget = new Pose(pose.x() + distance * Math.cos(angle),
                     pose.y() + distance * sin, 0);
         }
-        r.turret.resetAimTrim();
     }
 
     private void updateIntake(double velocity) {
@@ -239,9 +258,9 @@ public class DebugNew extends BekaBaseNew {
 
     private void setMode(Mode next) {
         switch (next) {
-            case INTAKE: rgb.intake(); break;
-            case SHOOT: rgb.shoot(); break;
-            default: rgb.idle();
+            case INTAKE: r.rgb.intake(); break;
+            case SHOOT: r.rgb.shoot(); break;
+            default: r.rgb.idle();
         }
         mode = next;
         feeding = false;
