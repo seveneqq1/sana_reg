@@ -13,6 +13,7 @@ import com.pedropathing.paths.interpolator.Interpolator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
+import com.seattlesolvers.solverslib.command.InstantCommand;
 import com.seattlesolvers.solverslib.command.ParallelCommandGroup;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
 import com.seattlesolvers.solverslib.command.WaitCommand;
@@ -27,6 +28,7 @@ import org.firstinspires.ftc.teamcode.bobot.util.RegShooter;
 public class auto_new extends LinearOpMode {
     private RobotNew r;
     private Follower follower;
+    private double shooterTPSOffset = 27;
 
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
@@ -68,12 +70,13 @@ public class auto_new extends LinearOpMode {
                         ),
                 new WaitCommand(100),
                 shoot(r),
+                new InstantCommand(() -> shooterTPSOffset = 30),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootpreloadgarden()),
                         intake(r),
                         spinUp(r)
                 ),
-                new WaitCommand(450),
+                new WaitCommand(700),
                 new ParallelCommandGroup(
                         new FollowPathCommand(follower, shootgarden()),
                         new SequentialCommandGroup(
@@ -169,7 +172,7 @@ public class auto_new extends LinearOpMode {
                     Pose target = Turret.selectWestFieldTarget(pose);
                     double defaultTPS = RegShooter.velForDist(
                             pose.distance(target), RobotNew.ShooterNew.baseVel);
-                    r.shooter.setTargetTPS(defaultTPS > 0 ? defaultTPS + 30 : 0);
+                    r.shooter.setTargetTPS(defaultTPS > 0 ? defaultTPS + shooterTPSOffset : 0);
                     r.turret.face(target, pose, follower.velocity().omega);
                     scheduler.run();
                     r.rgb.periodic();
